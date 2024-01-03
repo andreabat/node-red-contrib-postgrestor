@@ -3,7 +3,7 @@
 # node-red-contrib-pg
 Node-red-contrib-postgrestor :space_invader: is a [**Node-RED**](http://nodered.org/) node allowing basic access to [**Postgres**](https://www.postgresql.org/) :elephant: database.
 
-This fork has updated dependencies and allows to **Parameterized query**
+This fork has updated dependencies and allows to **Parameterized query**, **throwing exceptions**,and a **listen** node (for listening to NOTIFY events in postgres. **BEWARE** for sql injection. use with care or help me solve!)
 
 
 Pass them as a parameter array  ***params** of the msg object.
@@ -15,6 +15,8 @@ Node-red-contrib-postgrestor sets up a console to execute queries against the co
 * ```rowCount```: The number of rows affected by the SQL statement
 * ```oid```: The oid returned
 * ```rows```: An array of rows
+
+
 
 
 Postgres implements a template engine allowing parameterized queries:

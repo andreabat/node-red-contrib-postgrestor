@@ -48,8 +48,10 @@ module.exports = function (RED) {
 
     node.connectionTimeout = n.connectionTimeout;
     node.connectionTimeoutFieldType = n.connectionTimeoutFieldType;
-
-
+    node.throwErrors = n.throwErrors;
+    node.throwErrorsFieldType = n.throwErrorsFieldType;
+    console.log("config throwErrors", node.throwErrors);
+    
     this.pgPool = new Pool({
       user: getField(node, n.userFieldType, n.user),
       password: getField(node, n.passwordFieldType, n.password),
@@ -83,9 +85,25 @@ module.exports = function (RED) {
           client = await node.config.pgPool.connect();
           msg.payload = await client.query(query, msg.params || []);
         } catch (err) {
-          const error = err.toString();
-          node.error(error);
-          msg.payload = error;
+          console.log("throwErrors", config.throwErrors);
+
+          if(config.throwErrors){
+            node.status({
+              fill: 'red',
+              shape: 'ring',
+              text: err.toString()
+          });
+              node.error(err, msg);
+              msg = null;
+          }else{
+            const error = err.toString();
+            node.error(error);
+            msg.error = error;
+          }
+          // msg._error = err;
+          // const error = err.toString();
+          // node.error(error);
+          // msg.error = error;
         } finally {
           if (client) {
             console.log("connection released");
@@ -100,4 +118,41 @@ module.exports = function (RED) {
   }
 
   RED.nodes.registerType('postgrestor', PostgrestorNode);
+
+
+
+  function PostgrestorListenerNode(config){
+    const node = this;
+    RED.nodes.createNode(node, config);
+    node.config = RED.nodes.getNode(config.postgresDB);
+    node.config.pgPool.connect().then(client => {
+
+      client.on('notification', async ({ channel, payload }) => {
+        node.log("notification received on channel " + channel);
+        let msg = {channel,payload};
+        node.send(msg);
+      })
+      // client.query("LISTEN " + config.channel);
+     
+    try {
+        config.channel = "test"
+        console.log(config.channel)
+        // node.log("NOT HANDLED ?",config.channel)
+        client.query(`LISTEN ${config.channel}`).then(res => {
+          node.log("Listening on channel " + config.channel);
+        }).catch(err => {
+          node.error(err)
+        })
+        
+        
+
+    } catch (error) { 
+        node.error(error);
+    }
+    });
+    
+    
+ 
+  }
+  RED.nodes.registerType('postgrestor-listener', PostgrestorListenerNode);
 };

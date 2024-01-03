@@ -6,9 +6,18 @@
     </label>
     <input type="text" id="node-config-input-name" data-i18n="[placeholder]postgrestor.placeholder.name">
   </div>
+  <!-- <div class="form-row">
+    <label for="node-config-input-throwErrors">
+      <i class="fa fa-error"></i>
+      <span data-i18n="postgrestor.label.throwErrors">Throw Exception</span>
+    </label>
+    <input type="checkbox" id="node-config-input-throwErrors" data-i18n="[placeholder]postgrestor.placeholder.throwErrors">
+    <input type="hidden" id="node-config-input-throwErrorsFieldType">
+  </div> -->
   <div class="form-row">
     <ul style="background: #fff; min-width: 600px; margin-bottom: 20px;" id="postgrestor-config-tabs"></ul>
   </div>
+
   <div id="postgrestor-config-tabs-content" style="min-height: 170px;">
     <div id="postgrestor-config-tab-connection" style="display: none;">
       <div class="form-row">
@@ -103,6 +112,12 @@
     defaults: {
       name: {
         value: ""
+      },
+      "throwErrors":{
+        value:true,
+      },
+      throwErrorsFieldType:{
+        value:"bool",
       },
       host: {
         value: "127.0.0.1",
@@ -288,6 +303,13 @@
       <span data-i18n="postgrestor.label.receiveOuput"></span>
     </label>
   </div>
+  <div class="form-row">
+   
+    <input type="checkbox" id="node-input-throwErrors"  style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-input-throwErrors">
+      <span data-i18n="postgrestor.label.throwErrors">Throw Exception</span>
+    </label>
+  </div>
   <div class="form-row" style="position: relative; margin-bottom: 0px;">
     <label for="node-input-query">
       <i class="fa fa-file-code-o"></i>
@@ -318,6 +340,9 @@
       },
       outputs: {
         value: 1
+      },
+      throwErrors:{
+        value:false,
       }
     },
     inputs: 1,
@@ -331,6 +356,8 @@
     },
     oneditprepare: function () {
       $("#node-input-output").prop("checked", this.output);
+      $("#node-input-throwErrors").prop("checked", this.throwErrors);
+
       this.editor = RED.editor.createEditor({
         id: 'node-input-editor',
         mode: 'ace/mode/sql',
@@ -341,6 +368,65 @@
     oneditsave: function () {
       $("#node-input-query").val(this.editor.getValue());
       delete this.editor;
+    }
+  });
+</script>
+
+
+
+<script type="text/x-red" data-template-name="postgrestor-listener">
+  <div class="form-row">
+    <label for="node-input-name">
+      <i class="icon-tag"></i>
+      <span data-i18n="postgrestor.label.name"></span>
+    </label>
+    <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name"> </div>
+  <div class="form-row">
+    <label for="node-input-postgresDB">
+      <i class="fa fa-server"></i>
+      <span data-i18n="postgrestor.label.server"></span>
+    </label>
+    <input type="text" id="node-input-postgresDB">
+  </div>
+  <div class="form-row">
+    <label for="node-input-channel">
+      <span data-i18n="postgrestor.label.channel">Channel to listen to</span>
+    </label>
+    <input type="text" id="node-input-channel" data-i18n="[placeholder]node-red:common.label.channel"> </div>
+</script>
+<script type="text/javascript">
+  RED.nodes.registerType("postgrestor-listener", {
+    category: "storage",
+    color: '#336791',
+    defaults: {
+      channel: {
+        value: ""
+      },
+     
+      postgresDB: {
+        type: "postgresDB",
+        required: true
+      },
+     
+      outputs: {
+        value: 1
+      },
+     
+    },
+    inputs: 0,
+    icon: "postgres.png",
+    align: "left",
+    label: function () {
+      return this.name || "postgrestor-listener";
+    },
+    labelStyle: function () {
+      return this.name ? "node_label_italic" : "";
+    },
+    oneditprepare: function () {
+      
+    },
+    oneditsave: function () {
+     
     }
   });
 </script>
