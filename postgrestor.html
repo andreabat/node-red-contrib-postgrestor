@@ -108,7 +108,7 @@
 <script type="text/javascript">
   RED.nodes.registerType('postgresDB', {
     category: "config",
-    color: "#336791",
+    color: "rgb(5, 93, 193)",
     defaults: {
       name: {
         value: ""
@@ -323,7 +323,7 @@
 <script type="text/javascript">
   RED.nodes.registerType("postgrestor", {
     category: "storage",
-    color: '#336791',
+    color: 'rgb(5, 93, 193)',
     defaults: {
       name: {
         value: ""
@@ -346,7 +346,8 @@
       }
     },
     inputs: 1,
-    icon: "postgres.png",
+    icon: "sql.png",
+    iconStyle: "red-node-icon sql",
     align: "left",
     label: function () {
       return this.name || "postgrestor";
@@ -397,7 +398,7 @@
 <script type="text/javascript">
   RED.nodes.registerType("postgrestor-listener", {
     category: "storage",
-    color: '#336791',
+    color: 'rgb(5, 93, 193)',
     defaults: {
       channel: {
         value: ""
@@ -414,7 +415,7 @@
      
     },
     inputs: 0,
-    icon: "postgres.png",
+    icon: "listen.png",
     align: "left",
     label: function () {
       return this.name || "postgrestor-listener";
