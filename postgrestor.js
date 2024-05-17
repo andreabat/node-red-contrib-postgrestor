@@ -135,8 +135,8 @@ module.exports = function (RED) {
       // client.query("LISTEN " + config.channel);
      
     try {
-        config.channel = "test"
-        console.log(config.channel)
+        // config.channel = "test"
+        // console.log(config.channel)
         // node.log("NOT HANDLED ?",config.channel)
         client.query(`LISTEN ${config.channel}`).then(res => {
           node.log("Listening on channel " + config.channel);
