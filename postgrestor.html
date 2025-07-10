@@ -6,14 +6,14 @@
     </label>
     <input type="text" id="node-config-input-name" data-i18n="[placeholder]postgrestor.placeholder.name">
   </div>
-  <!-- <div class="form-row">
+  <div class="form-row">
     <label for="node-config-input-throwErrors">
-      <i class="fa fa-error"></i>
+      <i class="fa fa-exclamation-triangle"></i>
       <span data-i18n="postgrestor.label.throwErrors">Throw Exception</span>
     </label>
     <input type="checkbox" id="node-config-input-throwErrors" data-i18n="[placeholder]postgrestor.placeholder.throwErrors">
     <input type="hidden" id="node-config-input-throwErrorsFieldType">
-  </div> -->
+  </div>
   <div class="form-row">
     <ul style="background: #fff; min-width: 600px; margin-bottom: 20px;" id="postgrestor-config-tabs"></ul>
   </div>
@@ -29,12 +29,12 @@
         <input type="hidden" id="node-config-input-hostFieldType">
       </div>
       <div class="form-row">
-          <label for="node-config-input-port">
-            <span data-i18n="postgrestor.label.port"></span>
-          </label>
-          <input type="text" id="node-config-input-port" data-i18n="[placeholder]postgrestor.placeholder.port" style="width: 80%;">
-          <input type="hidden" id="node-config-input-portFieldType">
-        </div>
+        <label for="node-config-input-port">
+          <span data-i18n="postgrestor.label.port"></span>
+        </label>
+        <input type="text" id="node-config-input-port" data-i18n="[placeholder]postgrestor.placeholder.port" style="width: 80%;">
+        <input type="hidden" id="node-config-input-portFieldType">
+      </div>
       <div class="form-row">
         <label for="node-config-input-database">
           <i class="fa fa-database"></i>
@@ -44,10 +44,10 @@
         <input type="hidden" id="node-config-input-databaseFieldType">
       </div>
       <div class="form-row">
-        <label for="node-config-input-ssl" style="width: auto;margin-right: 72px;">
+        <label for="node-config-input-ssl" style="width: auto; margin-right: 72px;">
           <span data-i18n="postgrestor.label.ssl"></span>
         </label>
-        <input type="text" id="node-config-input-ssl" style="display: inline-block; width: auto; vertical-align: top;">
+        <input type="checkbox" id="node-config-input-ssl" style="display: inline-block; width: auto; vertical-align: top;">
         <input type="hidden" id="node-config-input-sslFieldType">
       </div>
     </div>
@@ -94,10 +94,10 @@
         <input type="text" id="node-config-input-idle" data-i18n="[placeholder]postgrestor.placeholder.idle" style="width: 60%;">
         <input type="hidden" id="node-config-input-idleFieldType">
       </div>
-       <div class="form-row">
+      <div class="form-row">
         <label for="node-config-input-connectionTimeout" style="width: 150px;">
           <i class="fa fa-hourglass-half"></i>
-          <span data-i18n="postgrestor.label.connectionTimeout" ></span>
+          <span data-i18n="postgrestor.label.connectionTimeout"></span>
         </label>
         <input type="text" id="node-config-input-connectionTimeout" data-i18n="[placeholder]postgrestor.placeholder.connectionTimeout" style="width: 60%;">
         <input type="hidden" id="node-config-input-connectionTimeoutFieldType">
@@ -113,11 +113,11 @@
       name: {
         value: ""
       },
-      "throwErrors":{
-        value:true,
+      throwErrors: {
+        value: true
       },
-      throwErrorsFieldType:{
-        value:"bool",
+      throwErrorsFieldType: {
+        value: "bool"
       },
       host: {
         value: "127.0.0.1",
@@ -175,7 +175,6 @@
       connectionTimeoutFieldType: {
         value: "num"
       },
-
       user: {
         value: "",
         required: true
@@ -193,7 +192,7 @@
     },
     label: function () {
       if (!this.name) {
-        this.name = this.user + "@" + this.host + ":" + this.port + "/" + this.database;
+        this.name = `${this.user}@${this.host}:${this.port}/${this.database}`;
       }
       return this.name;
     },
@@ -265,17 +264,17 @@
         types: ['num', 'flow', 'global'],
         typeField: $("#node-config-input-maxFieldType")
       });
-      $("#node-config-input-lin").typedInput({
+      $("#node-config-input-min").typedInput({
         default: 'num',
         types: ['num', 'flow', 'global'],
-        typeField: $("#node-config-input-linFieldType")
+        typeField: $("#node-config-input-minFieldType")
       });
       $("#node-config-input-idle").typedInput({
         default: 'num',
         types: ['num', 'flow', 'global'],
         typeField: $("#node-config-input-idleFieldType")
       });
-         $("#node-config-input-connectionTimeout").typedInput({
+      $("#node-config-input-connectionTimeout").typedInput({
         default: 'num',
         types: ['num', 'flow', 'global'],
         typeField: $("#node-config-input-connectionTimeoutFieldType")

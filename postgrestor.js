@@ -77,44 +77,48 @@ module.exports = function (RED) {
     node.config = RED.nodes.getNode(config.postgresDB);
     node.on('input', (msg) => {
       const query = mustache.render(config.query, { msg });
-      //node.config.pgPool;
 
       const asyncQuery = async () => {
-        let client = false;
+        let client = null;
         try {
           client = await node.config.pgPool.connect();
           msg.payload = await client.query(query, msg.params || []);
         } catch (err) {
-          console.log("throwErrors", config.throwErrors);
-
-          if(config.throwErrors){
-            node.status({
-              fill: 'red',
-              shape: 'ring',
-              text: err.toString()
+          const errorMessage = `Error executing query: ${err.message}`;
+          node.status({
+            fill: 'red',
+            shape: 'ring',
+            text: errorMessage
           });
-              node.error(err, msg);
-              msg = null;
-          }else{
-            const error = err.toString();
-            node.error(error);
-            msg.error = error;
+
+          if (config.throwErrors) {
+            node.error(errorMessage, msg);
+            msg = null;
+          } else {
+            node.error(errorMessage);
+            msg.error = errorMessage;
           }
-          // msg._error = err;
-          // const error = err.toString();
-          // node.error(error);
-          // msg.error = error;
         } finally {
           if (client) {
-            console.log("connection released");
-            client.release();
+            try {
+              client.release();
+              console.log("Connection released");
+            } catch (releaseError) {
+              node.error(`Error releasing connection: ${releaseError.message}`);
+            }
           }
           node.send(msg);
         }
       };
-      asyncQuery();
+
+      asyncQuery().catch((unhandledError) => {
+        node.error(`Unhandled error: ${unhandledError.message}`);
+      });
     });
-    node.on('close', () => node.status({}));
+
+    node.on('close', () => {
+      node.status({});
+    });
   }
 
   RED.nodes.registerType('postgrestor', PostgrestorNode);
@@ -125,34 +129,27 @@ module.exports = function (RED) {
     const node = this;
     RED.nodes.createNode(node, config);
     node.config = RED.nodes.getNode(config.postgresDB);
+
     node.config.pgPool.connect().then(client => {
-
       client.on('notification', async ({ channel, payload }) => {
-        node.log("notification received on channel " + channel);
-        let msg = {channel,payload};
-        node.send(msg);
-      })
-      // client.query("LISTEN " + config.channel);
-     
-    try {
-        // config.channel = "test"
-        // console.log(config.channel)
-        // node.log("NOT HANDLED ?",config.channel)
-        client.query(`LISTEN ${config.channel}`).then(res => {
-          node.log("Listening on channel " + config.channel);
-        }).catch(err => {
-          node.error(err)
-        })
-        
-        
+        try {
+          node.log(`Notification received on channel ${channel}`);
+          const msg = { channel, payload };
+          node.send(msg);
+        } catch (notificationError) {
+          node.error(`Error handling notification: ${notificationError.message}`);
+        }
+      });
 
-    } catch (error) { 
-        node.error(error);
-    }
+      client.query(`LISTEN ${config.channel}`).then(() => {
+        node.log(`Listening on channel ${config.channel}`);
+      }).catch(err => {
+        node.error(`Error setting up LISTEN: ${err.message}`);
+      });
+
+    }).catch(connectionError => {
+      node.error(`Error connecting to database: ${connectionError.message}`);
     });
-    
-    
- 
   }
   RED.nodes.registerType('postgrestor-listener', PostgrestorListenerNode);
 };
