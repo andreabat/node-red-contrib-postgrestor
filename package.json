@@ -1,6 +1,6 @@
 {
   "name": "@topcs/node-red-contrib-postgres",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "ci-publish": "ci-publish",
     "test": "eslint postgrestor.js"
