@@ -15,7 +15,7 @@
     "pg": "^8.16.2"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=18.0.0"
   },
   "license": "Apache",
   "repository": {
@@ -28,7 +28,7 @@
     "postgres"
   ],
   "node-red": {
-    "version": ">=4.0.0",
+    "version": ">=3.0.0",
     "nodes": {
       "@topcs/postgres": "postgrestor.js"
     }
