@@ -24,6 +24,8 @@ module.exports = function (RED) {
   }
 
   function PostgresDBNode(n) {
+    
+
     const node = this;
     RED.nodes.createNode(node, n);
     node.name = n.name;
@@ -53,8 +55,8 @@ module.exports = function (RED) {
     console.log("config throwErrors", node.throwErrors);
     
     this.pgPool = new Pool({
-      user: getField(node, n.userFieldType, n.user),
-      password: getField(node, n.passwordFieldType, n.password),
+      user: getField(node, n.userFieldType, node.credentials.user),
+      password: getField(node, n.passwordFieldType, node.credentials.password),
       host: getField(node, n.hostFieldType, n.host),
       port: getField(node, n.portFieldType, n.port),
       database: getField(node, n.databaseFieldType, n.database),
@@ -66,23 +68,34 @@ module.exports = function (RED) {
     });
   }
 
-  RED.nodes.registerType('topcsPostgresDB', PostgresDBNode);
+  RED.nodes.registerType('PostgresDBNode', PostgresDBNode, {
+    credentials: {
+      user: { type: 'text' },
+      password: { type: 'password' },
+    }});
 
   let myPool = false;
 
-  function PostgrestorNode(config) {
+  function PostgresNode(config) {
     const node = this;
     RED.nodes.createNode(node, config);
     node.topic = config.topic;
-    node.config = RED.nodes.getNode(config.postgresDB);
+    node.config = RED.nodes.getNode(config.PostgresDBNode);
     node.on('input', (msg) => {
       const query = mustache.render(config.query, { msg });
 
       const asyncQuery = async () => {
         let client = null;
         try {
+          console.log("Connecting to database with query:", query);
           client = await node.config.pgPool.connect();
+          console.log("Connected to database");
           msg.payload = await client.query(query, msg.params || []);
+           node.status({
+            fill: 'green',
+            shape: 'ring',
+            text: `Query ok. ${msg.payload.rowCount} rows returned`
+          });
         } catch (err) {
           const errorMessage = `Error executing query: ${err.message}`;
           node.status({
@@ -121,15 +134,29 @@ module.exports = function (RED) {
     });
   }
 
-  RED.nodes.registerType('@topcs/postgres', PostgrestorNode);
+  RED.nodes.registerType('PostgresNode', PostgresNode);
 
 
 
-  function PostgrestorListenerNode(config){
+  function PostgresListenerNode(config){
     const node = this;
     RED.nodes.createNode(node, config);
-    node.config = RED.nodes.getNode(config.postgresDB);
-
+    node.config = RED.nodes.getNode(config.PostgresDBNode);
+    if(!config.channel){
+      //set node status to red with error message
+      node.status({
+        fill: 'red',
+        shape: 'ring',
+        text: 'Channel is required'
+      });
+      return;
+    }else{
+      node.status({
+        fill: 'green',
+        shape: 'ring',
+        text: `Listening on channel ${config.channel}`
+      });
+    }
     node.config.pgPool.connect().then(client => {
       client.on('notification', async ({ channel, payload }) => {
         try {
@@ -151,5 +178,5 @@ module.exports = function (RED) {
       node.error(`Error connecting to database: ${connectionError.message}`);
     });
   }
-  RED.nodes.registerType('@topcs/postgres-listener', PostgrestorListenerNode);
+  RED.nodes.registerType('PostgresListenerNode', PostgresListenerNode);
 };

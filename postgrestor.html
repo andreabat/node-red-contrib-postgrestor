@@ -1,4 +1,4 @@
-<script type="text/x-red" data-template-name="postgresDB">
+<script type="text/x-red" data-template-name="PostgresDBNode">
   <div class="form-row">
     <label for="node-config-input-name">
       <i class="fa fa-tag"></i>
@@ -30,6 +30,7 @@
       </div>
       <div class="form-row">
         <label for="node-config-input-port">
+          <i class="fa fa-plug"></i>
           <span data-i18n="postgrestor.label.port"></span>
         </label>
         <input type="text" id="node-config-input-port" data-i18n="[placeholder]postgrestor.placeholder.port" style="width: 80%;">
@@ -52,22 +53,25 @@
       </div>
     </div>
     <div id="postgrestor-config-tab-security" style="display: none;">
+     
       <div class="form-row">
         <label for="node-config-input-user">
           <i class="fa fa-user"></i>
           <span data-i18n="postgrestor.label.user"></span>
         </label>
         <input type="text" id="node-config-input-user" data-i18n="[placeholder]postgrestor.placeholder.user" style="width: 80%;">
-        <input type="hidden" id="node-config-input-userFieldType">
+        <!-- <input type="hidden" id="node-config-input-userFieldType"> -->
       </div>
-      <div class="form-row">
+
+       <div class="form-row">
         <label for="node-config-input-password">
           <i class="fa fa-lock"></i>
           <span data-i18n="postgrestor.label.password"></span>
         </label>
         <input type="password" id="node-config-input-password" data-i18n="[placeholder]postgrestor.placeholder.password" style="width: 80%;">
-        <input type="hidden" id="node-config-input-passwordFieldType">
+ 
       </div>
+      
     </div>
     <div id="postgrestor-config-tab-pool" style="display: none;">
       <div class="form-row">
@@ -106,7 +110,7 @@
   </div>
 </script>
 <script type="text/javascript">
-  RED.nodes.registerType('postgresDB', {
+  RED.nodes.registerType('PostgresDBNode', {
     category: "config",
     color: "rgb(5, 93, 193)",
     defaults: {
@@ -175,20 +179,20 @@
       connectionTimeoutFieldType: {
         value: "num"
       },
-      user: {
-        value: "",
-        required: true
-      },
-      userFieldType: {
-        value: "str"
-      },
-      password: {
-        value: "",
-        required: true
-      },
-      passwordFieldType: {
-        value: "str"
-      }
+      // user: {
+      //   value: "",
+      //   required: true
+      // },
+      // userFieldType: {
+      //   value: "str"
+      // },
+      // password: {
+      //   value: "",
+      //   required: true
+      // },
+      // passwordFieldType: {
+      //   value: "str"
+      // }
     },
     label: function () {
       if (!this.name) {
@@ -234,31 +238,31 @@
         types: ['str', 'flow', 'global', 'env'],
         typeField: $("#node-config-input-databaseFieldType")
       });
-      $("#node-config-input-ssl").typedInput({
-        default: 'bool',
-        types: ['bool', 'flow', 'global'],
-        typeField: $("#node-config-input-sslFieldType")
-      });
-      $("#node-config-input-user").typedInput({
-        default: 'str',
-        types: ['str', 'flow', 'global', 'env'],
-        typeField: $("#node-config-input-userFieldType")
-      });
-      $("#node-config-input-password")
-        .typedInput({
-          default: 'str',
-          types: ['str', 'flow', 'global', 'env'],
-          typeField: $("#node-config-input-passwordFieldType")
-        })
-        .on('change', function (type, value) {
-          const e = $(this);
-          const kind = value === true ? e.typedInput('type') : value;
-          if (kind === 'str') {
-            e.attr('type', 'password');
-          } else {
-            e.attr('type', 'text');
-          }
-        });
+      // $("#node-config-input-ssl").typedInput({
+      //   default: 'bool',
+      //   types: ['bool', 'flow', 'global'],
+      //   typeField: $("#node-config-input-sslFieldType")
+      // });
+      // $("#node-config-input-user").typedInput({
+      //   default: 'str',
+      //   types: ['str', 'flow', 'global', 'env'],
+      //   typeField: $("#node-config-input-userFieldType")
+      // });
+      // $("#node-config-input-password")
+      //   .typedInput({
+      //     default: 'str',
+      //     types: ['str'], //, 'flow', 'global', 'env'],
+      //     // typeField: $("#node-config-input-passwordFieldType")
+      //   })
+        // .on('change', function (type, value) {
+        //   const e = $(this);
+        //   const kind = value === true ? e.typedInput('type') : value;
+        //   if (kind === 'str') {
+        //     e.attr('type', 'password');
+        //   } else {
+        //     e.attr('type', 'text');
+        //   }
+        // });
       $("#node-config-input-max").typedInput({
         default: 'num',
         types: ['num', 'flow', 'global'],
@@ -279,10 +283,15 @@
         types: ['num', 'flow', 'global'],
         typeField: $("#node-config-input-connectionTimeoutFieldType")
       });
-    }
+    },
+     credentials: {
+      user: { type: 'text' },
+      password: { type: 'password' },
+    },
+    
   });
 </script>
-<script type="text/x-red" data-template-name="postgrestor">
+<script type="text/x-red" data-template-name="PostgresNode">
   <div class="form-row">
     <label for="node-input-name">
       <i class="icon-tag"></i>
@@ -290,11 +299,11 @@
     </label>
     <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name"> </div>
   <div class="form-row">
-    <label for="node-input-postgresDB">
+    <label for="node-input-PostgresDBNode">
       <i class="fa fa-server"></i>
       <span data-i18n="postgrestor.label.server"></span>
     </label>
-    <input type="text" id="node-input-postgresDB">
+    <input type="text" id="node-input-PostgresDBNode">
   </div>
   <div class="form-row">
     <input type="checkbox" id="node-input-output" style="display: inline-block; width: auto; vertical-align: top;">
@@ -320,7 +329,7 @@
   </div>
 </script>
 <script type="text/javascript">
-  RED.nodes.registerType("postgrestor", {
+  RED.nodes.registerType("PostgresNode", {
     category: "storage",
     color: 'rgb(5, 93, 193)',
     defaults: {
@@ -330,8 +339,8 @@
       query: {
         value: "SELECT * FROM ;"
       },
-      postgresDB: {
-        type: "postgresDB",
+      PostgresDBNode: {
+        type: "PostgresDBNode",
         required: true
       },
       output: {
@@ -349,7 +358,7 @@
     iconStyle: "red-node-icon sql",
     align: "left",
     label: function () {
-      return this.name || "postgrestor";
+      return this.name || "query";
     },
     labelStyle: function () {
       return this.name ? "node_label_italic" : "";
@@ -374,7 +383,7 @@
 
 
 
-<script type="text/x-red" data-template-name="postgrestor-listener">
+<script type="text/x-red" data-template-name="PostgresListenerNode">
   <div class="form-row">
     <label for="node-input-name">
       <i class="icon-tag"></i>
@@ -382,11 +391,11 @@
     </label>
     <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name"> </div>
   <div class="form-row">
-    <label for="node-input-postgresDB">
+    <label for="node-input-PostgresDBNode">
       <i class="fa fa-server"></i>
       <span data-i18n="postgrestor.label.server"></span>
     </label>
-    <input type="text" id="node-input-postgresDB">
+    <input type="text" id="node-input-PostgresDBNode">
   </div>
   <div class="form-row">
     <label for="node-input-channel">
@@ -395,7 +404,7 @@
     <input type="text" id="node-input-channel" data-i18n="[placeholder]node-red:common.label.channel"> </div>
 </script>
 <script type="text/javascript">
-  RED.nodes.registerType("postgrestor-listener", {
+  RED.nodes.registerType("PostgresListenerNode", {
     category: "storage",
     color: 'rgb(5, 93, 193)',
     defaults: {
@@ -403,8 +412,8 @@
         value: ""
       },
      
-      postgresDB: {
-        type: "postgresDB",
+      PostgresDBNode: {
+        type: "PostgresDBNode",
         required: true
       },
      
@@ -417,7 +426,7 @@
     icon: "listen.png",
     align: "left",
     label: function () {
-      return this.name || "postgrestor-listener";
+      return this.name || "listener";
     },
     labelStyle: function () {
       return this.name ? "node_label_italic" : "";
