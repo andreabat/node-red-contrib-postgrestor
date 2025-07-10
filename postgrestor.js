@@ -66,7 +66,7 @@ module.exports = function (RED) {
     });
   }
 
-  RED.nodes.registerType('postgresDB', PostgresDBNode);
+  RED.nodes.registerType('topcsPostgresDB', PostgresDBNode);
 
   let myPool = false;
 
@@ -121,7 +121,7 @@ module.exports = function (RED) {
     });
   }
 
-  RED.nodes.registerType('postgrestor', PostgrestorNode);
+  RED.nodes.registerType('@topcs/postgres', PostgrestorNode);
 
 
 
@@ -151,5 +151,5 @@ module.exports = function (RED) {
       node.error(`Error connecting to database: ${connectionError.message}`);
     });
   }
-  RED.nodes.registerType('postgrestor-listener', PostgrestorListenerNode);
+  RED.nodes.registerType('@topcs/postgres-listener', PostgrestorListenerNode);
 };

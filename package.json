@@ -1,6 +1,6 @@
 {
   "name": "@topcs/node-red-contrib-postgres",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "scripts": {
     "ci-publish": "ci-publish",
     "test": "eslint postgrestor.js"
@@ -14,6 +14,10 @@
     "mustache": "^4.2.0",
     "pg": "^8.16.2"
   },
+  "engines": {
+    "node-red": ">=4.0.0",
+    "node": ">=22.0.0"
+  },
   "license": "Apache",
   "repository": {
     "type": "git",
@@ -26,7 +30,7 @@
   ],
   "node-red": {
     "nodes": {
-      "postgrestor": "postgrestor.js"
+      "@topcs/postgres": "postgrestor.js"
     }
   },
   "devDependencies": {
