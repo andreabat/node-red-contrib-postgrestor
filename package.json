@@ -2,7 +2,7 @@
   "name": "@topcs/node-red-contrib-postgres",
   "version": "2.0.0",
   "scripts": {
-    "build": "tsc && cat src/nodes/PostgresDBNode.html src/nodes/PostgresNode.html src/nodes/PostgresListenerNode.html > dist/postgrestor.html && cp src/nodes/*.html dist/",
+    "build": "tsc && cat src/nodes/PostgresDBNode.html src/nodes/PostgresNode.html src/nodes/PostgresListenerNode.html src/nodes/PostgresIntrospectNode.html > dist/postgrestor.html && cp src/nodes/*.html dist/",
     "test": "jest --coverage",
     "lint": "eslint .",
     "prepublishOnly": "npm run build"
