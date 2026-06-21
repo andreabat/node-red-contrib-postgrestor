@@ -1,5 +1,6 @@
 import { getRED, getREDNodes } from './red';
 import type { SchemaPayload } from './types';
+import { getSchemaCache } from '../nodes/PostgresIntrospectNode';
 
 function buildSystemPrompt(schema: SchemaPayload, style: string): string {
   const tableList = Object.entries(schema.tables).map(([key, table]) => {
@@ -50,12 +51,13 @@ export function init(_RED?: any): void {
   if (!RED) return;
 
   RED.httpAdmin.get('/postgres-introspect/schema/:configId', (req: any, res: any) => {
-    const configNode = RED.nodes.getNode(req.params.configId);
-    RED.log.info(`Schema request for config ${req.params.configId}: found=${!!configNode}, hasCache=${!!configNode?._schemaCache}`);
-    if (!configNode || !configNode._schemaCache) {
+    const configId = req.params.configId;
+    const cached = getSchemaCache().get(configId);
+    RED.log.info(`Schema request for config ${configId}: found=${!!cached}, hasPayload=${!!cached?.payload}`);
+    if (!cached || !cached.payload) {
       return res.json({ stale: true });
     }
-    return res.json(configNode._schemaCache);
+    return res.json(cached.payload);
   });
 
   RED.httpAdmin.post('/postgres-node/generate-query', async (req: any, res: any) => {
@@ -72,13 +74,14 @@ export function init(_RED?: any): void {
         return res.status(400).json({ error: 'No OpenRouter API key configured. Set it in the PostgresDBNode config.' });
       }
 
-      if (!configNode._schemaCache) {
+      if (!configNode._schemaCache && !getSchemaCache().get(configId)?.payload) {
         return res.status(400).json({ error: 'Schema not loaded — run introspection first. Add a PostgresIntrospectNode to your flow.' });
       }
 
       const model = configNode.model || 'openai/gpt-4o-mini';
       const promptStyle = configNode.promptStyle || 'balanced';
-      const systemPrompt = buildSystemPrompt(configNode._schemaCache, promptStyle);
+      const schema = getSchemaCache().get(configId)?.payload || configNode._schemaCache;
+      const systemPrompt = buildSystemPrompt(schema, promptStyle);
 
       const response = await globalThis.fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',

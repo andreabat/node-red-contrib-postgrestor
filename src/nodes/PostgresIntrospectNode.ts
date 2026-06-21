@@ -3,6 +3,15 @@ import { formatError } from '../lib/errorFormatter';
 import { buildIntrospectionQueries, assembleSchemaPayload } from '../lib/introspect';
 import type { SchemaPayload } from '../lib/types';
 
+// Module-level schema cache, keyed by config node ID
+// Used because RED.nodes.getNode() may not return the same object reference
+// that was written to by the introspect node's input handler.
+const schemaCache = new Map<string, { payload: SchemaPayload; timestamp: number }>();
+
+export function getSchemaCache(): Map<string, { payload: SchemaPayload; timestamp: number }> {
+  return schemaCache;
+}
+
 interface PostgresIntrospectNodeConfig {
   name: string;
   PostgresDBNode: string;
@@ -24,15 +33,15 @@ export function PostgresIntrospectNode(this: any, config: PostgresIntrospectNode
     const configNode = node.config;
 
     // Cache hit — return cached payload without querying
-    if (!msg.refresh && configNode._schemaCache && configNode._schemaTimestamp > 0) {
-      const age = Date.now() - configNode._schemaTimestamp;
+    const cached = schemaCache.get(config.PostgresDBNode);
+    if (!msg.refresh && cached && cached.timestamp > 0) {
+      const age = Date.now() - cached.timestamp;
       if (age < cacheTTL) {
         node.status({ fill: 'yellow', shape: 'ring', text: 'Serving from cache' });
-        const cached = configNode._schemaCache as SchemaPayload;
         node.send({
-          payload: cached,
-          schema: cached.schema,
-          database: cached.database,
+          payload: cached.payload,
+          schema: cached.payload.schema,
+          database: cached.payload.database,
           _msgid: msg._msgid,
         });
         return;
@@ -68,12 +77,14 @@ export function PostgresIntrospectNode(this: any, config: PostgresIntrospectNode
         // Fallback: database stays 'unknown'
       }
 
-      // Cache on config node
+      // Cache on config node + module-level map
       configNode._schemaCache = payload;
       configNode._schemaTimestamp = Date.now();
+      schemaCache.set(config.PostgresDBNode, { payload, timestamp: Date.now() });
 
       const tableCount = Object.keys(payload.tables).length;
       const colCount = Object.values(payload.tables).reduce((sum, t) => sum + t.columns.length, 0);
+      node.log(`Schema cached for ${config.PostgresDBNode}. Tables: ${tableCount}, cols: ${colCount}`);
       node.status({ fill: 'green', shape: 'ring', text: `${tableCount} tables, ${colCount} columns` });
 
       node.send({

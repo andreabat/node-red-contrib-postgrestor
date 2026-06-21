@@ -24,7 +24,7 @@ jest.mock('../../lib/errorFormatter', () => ({
 }));
 
 import type { SchemaPayload } from '../../lib/types';
-import { PostgresIntrospectNode } from '../PostgresIntrospectNode';
+import { PostgresIntrospectNode, getSchemaCache } from '../PostgresIntrospectNode';
 import { setRED } from '../../lib/red';
 
 function findInputHandler(ctx: any): Function {
@@ -36,9 +36,11 @@ function findInputHandler(ctx: any): Function {
 describe('PostgresIntrospectNode', () => {
   let redRuntime: any;
   let mockConfigNode: any;
+  const CONFIG_ID = 'config-id-1';
 
   beforeEach(() => {
     jest.clearAllMocks();
+    getSchemaCache().clear();
 
     mockConfigNode = {
       pgPool: { connect: mockPoolConnect },
@@ -60,7 +62,7 @@ describe('PostgresIntrospectNode', () => {
   describe('node construction', () => {
     it('should create node via RED.createNode', () => {
       const config: any = {
-        name: 'introspector', PostgresDBNode: 'config-id-1',
+        name: 'introspector', PostgresDBNode: CONFIG_ID,
         schema: 'public', cacheTTL: '300', includeSystemCatalogs: 'false',
       };
       const context: any = {
@@ -78,11 +80,10 @@ describe('PostgresIntrospectNode', () => {
       const cachedPayload: SchemaPayload = {
         database: 'testdb', schema: 'public', version: 150006, tables: {}, enums: {},
       };
-      mockConfigNode._schemaCache = cachedPayload;
-      mockConfigNode._schemaTimestamp = Date.now();
+      getSchemaCache().set(CONFIG_ID, { payload: cachedPayload, timestamp: Date.now() });
 
       const config: any = {
-        name: 'introspector', PostgresDBNode: 'config-id-1',
+        name: 'introspector', PostgresDBNode: CONFIG_ID,
         schema: 'public', cacheTTL: '300', includeSystemCatalogs: 'false',
       };
       const context: any = {
@@ -106,8 +107,10 @@ describe('PostgresIntrospectNode', () => {
     });
 
     it('should force refresh when msg.refresh is true', async () => {
-      mockConfigNode._schemaCache = { database: 'testdb', schema: 'public', version: 150006, tables: {}, enums: {} };
-      mockConfigNode._schemaTimestamp = Date.now();
+      getSchemaCache().set(CONFIG_ID, {
+        payload: { database: 'testdb', schema: 'public', version: 150006, tables: {}, enums: {} },
+        timestamp: Date.now(),
+      });
 
       const mockQuery = jest.fn()
         .mockResolvedValueOnce({ rows: [{ server_version: '15.0' }] })
@@ -117,7 +120,7 @@ describe('PostgresIntrospectNode', () => {
       mockPoolConnect.mockResolvedValue(mockClient);
 
       const config: any = {
-        name: 'introspector', PostgresDBNode: 'config-id-1',
+        name: 'introspector', PostgresDBNode: CONFIG_ID,
         schema: 'public', cacheTTL: '300', includeSystemCatalogs: 'false',
       };
       const context: any = {
@@ -140,7 +143,7 @@ describe('PostgresIntrospectNode', () => {
       mockPoolConnect.mockRejectedValue(new Error('Connection refused'));
 
       const config: any = {
-        name: 'introspector', PostgresDBNode: 'config-id-1',
+        name: 'introspector', PostgresDBNode: CONFIG_ID,
         schema: 'public', cacheTTL: '300', includeSystemCatalogs: 'false',
       };
       const context: any = {
@@ -164,7 +167,7 @@ describe('PostgresIntrospectNode', () => {
   describe('close handler', () => {
     it('should clear status on close', () => {
       const config: any = {
-        name: 'introspector', PostgresDBNode: 'config-id-1',
+        name: 'introspector', PostgresDBNode: CONFIG_ID,
         schema: 'public', cacheTTL: '300', includeSystemCatalogs: 'false',
       };
       const context: any = {

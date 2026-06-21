@@ -1,7 +1,14 @@
 import { init } from '../httpAdmin';
 
-// Mock global fetch
+// Mock fetch
 const mockFetch = jest.fn();
+
+// Mock getSchemaCache — httpAdmin imports it from PostgresIntrospectNode
+const mockSchemaMap = new Map<string, any>();
+jest.mock('../../nodes/PostgresIntrospectNode', () => ({
+  getSchemaCache: jest.fn(() => mockSchemaMap),
+  PostgresIntrospectNode: jest.fn(),
+}));
 
 describe('httpAdmin', () => {
   let routes: Record<string, { method: string; handler: Function }> = {};
@@ -10,6 +17,7 @@ describe('httpAdmin', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     routes = {};
+    mockSchemaMap.clear();
     (globalThis as any).fetch = mockFetch;
     mockRED = {
       httpAdmin: {
@@ -47,7 +55,7 @@ describe('httpAdmin', () => {
 
     it('should return cached payload when available', async () => {
       const cached = { database: 'testdb', schema: 'public', version: 150006, tables: {}, enums: {} };
-      mockRED.nodes.getNode.mockReturnValue({ _schemaCache: cached, _schemaTimestamp: Date.now() });
+      mockSchemaMap.set('config-1', { payload: cached, timestamp: Date.now() });
       const mockRes = { json: jest.fn(), status: jest.fn().mockReturnThis() };
       const handler = routes['GET /postgres-introspect/schema/:configId']?.handler;
       await handler({ params: { configId: 'config-1' } }, mockRes);
@@ -66,6 +74,7 @@ describe('httpAdmin', () => {
 
     it('should return 400 when no schema cached', async () => {
       mockRED.nodes.getNode.mockReturnValue({ _schemaCache: null, credentials: { openrouterApiKey: 'sk-test' } });
+      // Schema cache map is empty, so endpoint should return 400
       const mockRes = { json: jest.fn(), status: jest.fn().mockReturnThis() };
       const handler = routes['POST /postgres-node/generate-query']?.handler;
       await handler({ body: { prompt: 'test', configId: 'c1' } }, mockRes);
@@ -73,8 +82,10 @@ describe('httpAdmin', () => {
     });
 
     it('should call OpenRouter and return SQL', async () => {
+      const schema = { database: 'x', schema: 'public', version: 150000, tables: {}, enums: {} };
+      mockSchemaMap.set('c1', { payload: schema, timestamp: Date.now() });
       mockRED.nodes.getNode.mockReturnValue({
-        _schemaCache: { database: 'x', schema: 'public', version: 150000, tables: {}, enums: {} },
+        _schemaCache: schema,
         credentials: { openrouterApiKey: 'sk-test' },
         openrouterApiKey: 'sk-test',
         model: 'openai/gpt-4o-mini',
@@ -95,8 +106,10 @@ describe('httpAdmin', () => {
     });
 
     it('should strip markdown fences', async () => {
+      const schema = { database: 'x', schema: 'public', version: 150000, tables: {}, enums: {} };
+      mockSchemaMap.set('c1', { payload: schema, timestamp: Date.now() });
       mockRED.nodes.getNode.mockReturnValue({
-        _schemaCache: { database: 'x', schema: 'public', version: 150000, tables: {}, enums: {} },
+        _schemaCache: schema,
         credentials: { openrouterApiKey: 'sk-test' },
         openrouterApiKey: 'sk-test',
         model: 'openai/gpt-4o-mini',
