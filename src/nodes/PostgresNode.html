@@ -241,9 +241,24 @@
           fontSize: 14,
           enableBasicAutocompletion: true,
           enableLiveAutocompletion: true,
+          // Monaco-native options (Node-RED 5.x uses Monaco, not ACE)
+          quickSuggestions: true,
+          suggestOnTriggerCharacters: true,
+          wordBasedSuggestions: 'currentDocument',
         }
       });
       this.editor.focus();
+
+      // Force-enable Monaco completions if disabled
+      var rawM = this.editor.editor || this.editor;
+      if (rawM && rawM.updateOptions && typeof rawM.updateOptions === 'function') {
+        rawM.updateOptions({
+          quickSuggestions: true,
+          suggestOnTriggerCharacters: true,
+          wordBasedSuggestions: 'currentDocument',
+        });
+        console.log("[postgres-autocomplete] Monaco quickSuggestions enabled via updateOptions");
+      }
 
       // Schema-aware autocomplete using Monaco editor API
       if (typeof monaco !== 'undefined') {
