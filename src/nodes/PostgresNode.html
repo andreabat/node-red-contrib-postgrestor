@@ -298,14 +298,18 @@
                 return { suggestions: suggestions };
               }
 
-              // Context: after table. or alias. → suggest columns
-              var dotMatch = textToCursor.match(/[\s,(](\w+)\.(\w*)$/);
+              // Context: after table. / schema.table. / alias. → suggest columns
+              var dotMatch = textToCursor.match(/[\s,(]([\w.]+)\.(\w*)$/);
               if (dotMatch) {
-                var alias = dotMatch[1]; var colPrefix = dotMatch[2].toLowerCase();
+                var tableRef = dotMatch[1];
+                var colPrefix = dotMatch[2].toLowerCase();
                 for (var key in tables) {
                   if (tables.hasOwnProperty(key)) {
                     var shortName = key.split('.').pop();
-                    if (shortName === alias || key === alias) {
+                    // Match by full key (public.users), short name (users), or schema prefix (public. → all public.* tables)
+                    var schemaPrefix = key.split('.')[0];
+                    var match = (key === tableRef || shortName === tableRef || (tableRef === schemaPrefix && key.indexOf(tableRef + '.') === 0));
+                    if (match) {
                       var cols = tables[key].columns || [];
                       var pk = tables[key].primaryKey || [];
                       for (var i = 0; i < cols.length; i++) {
@@ -314,14 +318,14 @@
                           suggestions.push({
                             label: cols[i].name, kind: monaco.languages.CompletionItemKind.Field,
                             insertText: cols[i].name, range: range,
-                            detail: cols[i].type + (isPk ? ' PK' : '') + (cols[i].nullable ? '' : ' NOT NULL'),
+                            detail: key + ' — ' + cols[i].type + (isPk ? ' PK' : '') + (cols[i].nullable ? '' : ' NOT NULL'),
                           });
                         }
                       }
-                      return { suggestions: suggestions };
                     }
                   }
                 }
+                if (suggestions.length > 0) return { suggestions: suggestions };
               }
 
               // Default: suggest SQL keywords + table names (for SELECT, INSERT, UPDATE, DELETE, WHERE etc)
