@@ -265,14 +265,10 @@
         var mEditor = this.editor.editor || this.editor;
         var model = mEditor && mEditor.getModel ? mEditor.getModel() : null;
         var langId = model ? model.getLanguageId() : null;
-        console.log("[postgres-autocomplete] Monaco editor language:", langId);
 
-        if (!langId) {
-          console.log("[postgres-autocomplete] No language ID found — aborting");
-        } else {
+        if (langId) {
           monaco.languages.registerCompletionItemProvider(langId, {
             provideCompletionItems: function(model, position) {
-              console.log("[postgres-autocomplete] called, schemaLoaded:", !!self._schemaCache);
               if (!self._schemaCache) return { suggestions: [] };
               var tables = self._schemaCache.tables || {};
 
@@ -280,22 +276,17 @@
                 startLineNumber: 1, startColumn: 1,
                 endLineNumber: position.lineNumber, endColumn: position.column,
               });
-              console.log("[postgres-autocomplete] textToCursor last 50 chars:", JSON.stringify(textToCursor.slice(-50)));
 
               var suggestions = [];
-              // Range: narrow to cursor position only (not the FROM/JOIN keyword)
-              // getWordUntilPosition would include "from" which filters out all table names
               var range = {
-                startLineNumber: position.lineNumber,
-                endLineNumber: position.lineNumber,
-                startColumn: position.column,
-                endColumn: position.column,
+                startLineNumber: position.lineNumber, endLineNumber: position.lineNumber,
+                startColumn: position.column, endColumn: position.column,
               };
-              var fromMatch = textToCursor.match(/\bFROM\s*("?[\w.]*"?)$/i);
-              var joinMatch = textToCursor.match(/\bJOIN\s*("?[\w.]*"?)$/i);
-              console.log("[postgres-autocomplete] fromMatch:", fromMatch, "joinMatch:", joinMatch);
-              if (fromMatch || joinMatch) {
-                var partial = (fromMatch || joinMatch)[1].replace(/"/g, '').toLowerCase();
+
+              // Context: after FROM / JOIN / INTO → suggest tables
+              var tableContext = textToCursor.match(/\b(FROM|JOIN|INTO)\s*("?[\w.]*"?)$/i);
+              if (tableContext) {
+                var partial = (tableContext[2] || '').replace(/"/g, '').toLowerCase();
                 for (var key in tables) {
                   if (tables.hasOwnProperty(key) && (!partial || key.toLowerCase().indexOf(partial) >= 0)) {
                     suggestions.push({
@@ -304,38 +295,61 @@
                     });
                   }
                 }
-              } else {
-                var dotMatch = textToCursor.match(/[\s,(](\w+)\.(\w*)$/);
-                if (dotMatch) {
-                  var alias = dotMatch[1];
-                  var colPrefix = dotMatch[2].toLowerCase();
-                  for (var key in tables) {
-                    if (tables.hasOwnProperty(key)) {
-                      var shortName = key.split('.').pop();
-                      if (shortName === alias || key === alias) {
-                        var cols = tables[key].columns || [];
-                        var pk = tables[key].primaryKey || [];
-                        for (var i = 0; i < cols.length; i++) {
-                          if (!colPrefix || cols[i].name.toLowerCase().indexOf(colPrefix) === 0) {
-                            var isPk = pk.indexOf(cols[i].name) >= 0;
-                            suggestions.push({
-                              label: cols[i].name, kind: monaco.languages.CompletionItemKind.Field,
-                              insertText: cols[i].name, range: range,
-                              detail: cols[i].type + (isPk ? ' PK' : '') + (cols[i].nullable ? '' : ' NOT NULL'),
-                            });
-                          }
+                return { suggestions: suggestions };
+              }
+
+              // Context: after table. or alias. → suggest columns
+              var dotMatch = textToCursor.match(/[\s,(](\w+)\.(\w*)$/);
+              if (dotMatch) {
+                var alias = dotMatch[1]; var colPrefix = dotMatch[2].toLowerCase();
+                for (var key in tables) {
+                  if (tables.hasOwnProperty(key)) {
+                    var shortName = key.split('.').pop();
+                    if (shortName === alias || key === alias) {
+                      var cols = tables[key].columns || [];
+                      var pk = tables[key].primaryKey || [];
+                      for (var i = 0; i < cols.length; i++) {
+                        if (!colPrefix || cols[i].name.toLowerCase().indexOf(colPrefix) === 0) {
+                          var isPk = pk.indexOf(cols[i].name) >= 0;
+                          suggestions.push({
+                            label: cols[i].name, kind: monaco.languages.CompletionItemKind.Field,
+                            insertText: cols[i].name, range: range,
+                            detail: cols[i].type + (isPk ? ' PK' : '') + (cols[i].nullable ? '' : ' NOT NULL'),
+                          });
                         }
-                        break;
                       }
+                      return { suggestions: suggestions };
                     }
                   }
                 }
               }
-              console.log("[postgres-autocomplete] returning", suggestions.length, "suggestions");
+
+              // Default: suggest SQL keywords + table names (for SELECT, INSERT, UPDATE, DELETE, WHERE etc)
+              var keywords = ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'INSERT INTO', 'UPDATE', 'DELETE FROM',
+                'SET', 'VALUES', 'RETURNING', 'ORDER BY', 'GROUP BY', 'HAVING', 'LIMIT', 'OFFSET',
+                'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'ON', 'AS', 'DISTINCT',
+                'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'COALESCE', 'NULLIF', 'CAST',
+                'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'EXISTS', 'IN', 'NOT', 'IS NULL', 'IS NOT NULL',
+                'BEGIN', 'COMMIT', 'ROLLBACK', 'ILIKE', 'BETWEEN', 'UNION', 'EXCEPT'];
+              for (var k = 0; k < keywords.length; k++) {
+                suggestions.push({
+                  label: keywords[k], kind: monaco.languages.CompletionItemKind.Keyword,
+                  insertText: keywords[k], range: range,
+                });
+              }
+              // Also add table names as general suggestions
+              for (var tkey in tables) {
+                if (tables.hasOwnProperty(tkey)) {
+                  suggestions.push({
+                    label: tkey, kind: monaco.languages.CompletionItemKind.Class,
+                    insertText: tkey, range: range,
+                    detail: Object.keys(tables[tkey].columns || {}).length + ' cols',
+                  });
+                }
+              }
               return { suggestions: suggestions };
             }
           });
-          console.log("[postgres-autocomplete] Completer registered for language:", langId);
         }
       }
 
@@ -422,7 +436,6 @@
           return;
         }
         $.getJSON("postgres-introspect/schema/" + configId, function(data) {
-          console.log("[postgres-autocomplete] checkMagicState: stale=" + !!data.stale + " configId=" + configId);
           if (data.stale) {
             magicGenerate.prop("disabled", true).attr("title", "Schema not loaded");
             genQueryBtn.prop("disabled", true).attr("title", "Schema not loaded");
