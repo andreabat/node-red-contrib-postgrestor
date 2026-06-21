@@ -283,6 +283,31 @@
                 startColumn: position.column, endColumn: position.column,
               };
 
+              // Build alias map from query text: FROM table AS alias, JOIN table alias, etc.
+              function buildAliasMap(text, tables) {
+                var map = {};
+                // Matches: FROM/JOIN tableName [AS] alias (case-insensitive)
+                var re = /\b(FROM|JOIN)\s+("?[\w.]+?"?)\s+(?:AS\s+)?(\w+)/gi;
+                var m;
+                while ((m = re.exec(text)) !== null) {
+                  var tableName = m[2].replace(/"/g, '');
+                  var alias = m[3];
+                  // Resolve tableName to full key
+                  for (var key in tables) {
+                    if (tables.hasOwnProperty(key)) {
+                      var sn = key.split('.').pop();
+                      if (key === tableName || sn === tableName) {
+                        map[alias] = key;
+                        break;
+                      }
+                    }
+                  }
+                }
+                return map;
+              }
+
+              var aliasMap = buildAliasMap(textToCursor, tables);
+
               // Context: after FROM / JOIN / INTO → suggest tables
               var tableContext = textToCursor.match(/\b(FROM|JOIN|INTO)\s*("?[\w.]*"?)$/i);
               if (tableContext) {
@@ -308,7 +333,7 @@
                     var shortName = key.split('.').pop();
                     // Match by full key (public.users), short name (users), or schema prefix (public. → all public.* tables)
                     var schemaPrefix = key.split('.')[0];
-                    var match = (key === tableRef || shortName === tableRef || (tableRef === schemaPrefix && key.indexOf(tableRef + '.') === 0));
+                    var match = (key === tableRef || shortName === tableRef || (tableRef === schemaPrefix && key.indexOf(tableRef + '.') === 0) || aliasMap[tableRef] === key);
                     if (match) {
                       var cols = tables[key].columns || [];
                       var pk = tables[key].primaryKey || [];
