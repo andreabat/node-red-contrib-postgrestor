@@ -758,4 +758,32 @@ describe('PostgresDBNode', () => {
       jest.useRealTimers();
     });
   });
+
+  describe('schema cache fields', () => {
+    it('should expose _schemaCache initialized to null and _schemaTimestamp to 0', () => {
+      const config: any = {
+        name: 'test', host: 'localhost', hostFieldType: 'str',
+        port: '5432', portFieldType: 'num', database: 'mydb', databaseFieldType: 'str',
+        ssl: 'false', sslFieldType: 'bool', sslmode: 'disable', sslmodeFieldType: 'str',
+        databaseUrl: '', databaseUrlFieldType: 'str', useDatabaseUrl: 'false',
+        statementTimeout: '0', statementTimeoutFieldType: 'num',
+        max: '5', maxFieldType: 'num', min: '2', minFieldType: 'num',
+        idle: '5000', idleFieldType: 'num',
+        connectionTimeout: '3000', connectionTimeoutFieldType: 'num',
+        throwErrors: 'true', throwErrorsFieldType: 'bool',
+        user: '', userFieldType: 'str', password: '', passwordFieldType: 'str'
+      };
+      const context: any = {
+        context: () => ({ flow: { get: () => undefined }, global: { get: () => undefined } }),
+        debug: jest.fn(), warn: jest.fn(), on: jest.fn(), status: jest.fn(),
+        credentials: { user: undefined, password: undefined }
+      };
+      const boundFn = PostgresDBNode.bind(context, config);
+      boundFn();
+
+      expect(context._schemaCache).toBeNull();
+      expect(typeof context._schemaTimestamp).toBe('number');
+      expect(context._schemaTimestamp).toBe(0);
+    });
+  });
 });

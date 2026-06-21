@@ -42,6 +42,10 @@ export function PostgresDBNode(this: any, n: PostgresDBNodeConfig) {
   node.throwErrorsFieldType = n.throwErrorsFieldType;
   node.debug(`config throwErrors: ${node.throwErrors}`);
 
+  // Schema cache — populated by PostgresIntrospectNode, consumed by editor via HTTP admin
+  node._schemaCache = null;
+  node._schemaTimestamp = 0;
+
   // --- SSL config builder ---
   let sslmode = (getField(node, n.sslmodeFieldType as any, n.sslmode) as string) || 'disable';
   const legacySsl = getField(node, n.sslFieldType as any, n.ssl) as boolean;
