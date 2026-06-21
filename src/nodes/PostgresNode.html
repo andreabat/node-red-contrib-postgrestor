@@ -283,6 +283,13 @@
               console.log("[postgres-autocomplete] textToCursor last 50 chars:", JSON.stringify(textToCursor.slice(-50)));
 
               var suggestions = [];
+              var word = model.getWordUntilPosition(position);
+              var range = {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: word.startColumn,
+                endColumn: word.endColumn,
+              };
               var fromMatch = textToCursor.match(/\bFROM\s*("?[\w.]*"?)$/i);
               var joinMatch = textToCursor.match(/\bJOIN\s*("?[\w.]*"?)$/i);
               console.log("[postgres-autocomplete] fromMatch:", fromMatch, "joinMatch:", joinMatch);
@@ -292,7 +299,7 @@
                   if (tables.hasOwnProperty(key) && (!partial || key.toLowerCase().indexOf(partial) >= 0)) {
                     suggestions.push({
                       label: key, kind: monaco.languages.CompletionItemKind.Class,
-                      insertText: key, detail: Object.keys(tables[key].columns || {}).length + ' cols',
+                      insertText: key, range: range, detail: Object.keys(tables[key].columns || {}).length + ' cols',
                     });
                   }
                 }
@@ -312,7 +319,7 @@
                             var isPk = pk.indexOf(cols[i].name) >= 0;
                             suggestions.push({
                               label: cols[i].name, kind: monaco.languages.CompletionItemKind.Field,
-                              insertText: cols[i].name,
+                              insertText: cols[i].name, range: range,
                               detail: cols[i].type + (isPk ? ' PK' : '') + (cols[i].nullable ? '' : ' NOT NULL'),
                             });
                           }
