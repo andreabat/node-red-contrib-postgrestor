@@ -298,9 +298,8 @@
       };
 
       // Register the custom completer with ACE's language tools
-      if (this.editor.editor && this.editor.editor.completers) {
-        this.editor.editor.completers.push(schemaCompleter);
-      }
+      var langTools = ace.require("ace/ext/language_tools");
+      langTools.addCompleter(schemaCompleter);
 
       // Initialize type mapping checkbox states from current config
       $("#node-input-mapNumeric").prop("checked", this.mapNumeric === true || this.mapNumeric === 'true');
