@@ -174,6 +174,44 @@
         <input type="hidden" id="node-config-input-statementTimeoutFieldType">
       </div>
     </div>
+    <div id="postgrestor-config-tab-ai" style="display: none;">
+      <div class="form-row">
+        <label for="node-config-input-openrouterApiKey">
+          <i class="fa fa-key"></i>
+          <span>OpenRouter API Key</span>
+        </label>
+        <input type="password" id="node-config-input-openrouterApiKey" placeholder="sk-or-v1-..." style="width: 80%;">
+      </div>
+      <div class="form-row">
+        <label for="node-config-input-model">
+          <i class="fa fa-cube"></i>
+          <span>AI Model</span>
+        </label>
+        <select id="node-config-input-model" style="width: auto;">
+          <option value="openai/gpt-4o-mini">GPT-4o Mini (fast, cheap)</option>
+          <option value="openai/gpt-4o">GPT-4o (smarter)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="node-config-input-promptStyle">
+          <i class="fa fa-sliders"></i>
+          <span>AI Prompt Style</span>
+        </label>
+        <select id="node-config-input-promptStyle" style="width: auto;">
+          <option value="concise">Concise</option>
+          <option value="balanced">Balanced</option>
+          <option value="verbose">Verbose (with comments)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <span id="postgres-schema-status" style="font-size: 0.85em; color: #888;">
+          <i class="fa fa-database"></i> Schema: not loaded
+        </span>
+        <button id="postgres-refresh-schema-btn" class="red-ui-button red-ui-button-small" style="margin-left: 8px;">
+          <i class="fa fa-refresh"></i> Refresh Schema
+        </button>
+      </div>
+    </div>
   </div>
 </script>
 <script type="text/javascript">
@@ -259,7 +297,9 @@
       },
       statementTimeoutFieldType: {
         value: "num"
-      }
+      },
+      model: { value: "openai/gpt-4o-mini" },
+      promptStyle: { value: "balanced" }
     },
     label: function () {
       if (!this.name) {
@@ -289,6 +329,10 @@
       tabs.addTab({
         id: "postgrestor-config-tab-pool",
         label: this._('postgres.tab.pool')
+      });
+      tabs.addTab({
+        id: "postgrestor-config-tab-ai",
+        label: "🪄 AI"
       });
       $("#node-config-input-host").typedInput({
         default: 'str',
@@ -376,6 +420,46 @@
       // Trigger visibility on initial load
       toggleFields();
       sslmodeToggleCerts();
+
+      // Schema status badge + refresh
+      var self = this;
+      var schemaStatus = $("#postgres-schema-status");
+      if (self.id) {
+        $.getJSON("postgres-introspect/schema/" + self.id, function(data) {
+          if (data.stale) {
+            schemaStatus.html('<i class="fa fa-database"></i> Schema: not loaded');
+          } else {
+            var tableCount = Object.keys(data.tables || {}).length;
+            var colCount = 0;
+            var tables = data.tables || {};
+            for (var k in tables) {
+              if (tables.hasOwnProperty(k)) colCount += (tables[k].columns || []).length;
+            }
+            schemaStatus.html('<i class="fa fa-database"></i> Schema: loaded (' + tableCount + ' tables, ' + colCount + ' columns)');
+          }
+        }).fail(function() {
+          schemaStatus.html('<i class="fa fa-database"></i> Schema: not loaded');
+        });
+      }
+      $("#postgres-refresh-schema-btn").click(function() {
+        schemaStatus.html('<i class="fa fa-spinner fa-spin"></i> Refreshing...');
+        var configId = self.id;
+        setTimeout(function() {
+          $.getJSON("postgres-introspect/schema/" + configId, function(data) {
+            if (data.stale) {
+              schemaStatus.html('<i class="fa fa-database"></i> Schema: not loaded \u2014 add a PostgresIntrospectNode');
+            } else {
+              var tableCount = Object.keys(data.tables || {}).length;
+              var colCount = 0;
+              var tables = data.tables || {};
+              for (var k in tables) {
+                if (tables.hasOwnProperty(k)) colCount += (tables[k].columns || []).length;
+              }
+              schemaStatus.html('<i class="fa fa-database"></i> Schema: loaded (' + tableCount + ' tables, ' + colCount + ' columns)');
+            }
+          });
+        }, 2000);
+      });
     },
      credentials: {
       user: { type: 'text' },
