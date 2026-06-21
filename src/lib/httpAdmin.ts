@@ -51,6 +51,7 @@ export function init(_RED?: any): void {
 
   RED.httpAdmin.get('/postgres-introspect/schema/:configId', (req: any, res: any) => {
     const configNode = RED.nodes.getNode(req.params.configId);
+    RED.log.info(`Schema request for config ${req.params.configId}: found=${!!configNode}, hasCache=${!!configNode?._schemaCache}`);
     if (!configNode || !configNode._schemaCache) {
       return res.json({ stale: true });
     }
