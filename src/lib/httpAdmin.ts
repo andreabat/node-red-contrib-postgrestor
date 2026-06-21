@@ -1,5 +1,7 @@
 import { getRED, getREDNodes } from './red';
 import { getSchemaCache } from './schemaCache';
+import { buildIntrospectionQueries, assembleSchemaPayload } from './introspect';
+import { formatError } from './errorFormatter';
 import type { SchemaPayload } from './types';
 
 function buildSystemPrompt(schema: SchemaPayload, style: string): string {
@@ -51,13 +53,65 @@ export function init(_RED?: any): void {
   if (!RED) return;
 
   RED.httpAdmin.get('/postgres-introspect/schema/:configId', (req: any, res: any) => {
-    const configId = req.params.configId;
-    const cached = getSchemaCache().get(configId);
-    RED.log.info(`Schema request for config ${configId}: found=${!!cached}, hasPayload=${!!cached?.payload}`);
+    const cached = getSchemaCache().get(req.params.configId);
     if (!cached || !cached.payload) {
       return res.json({ stale: true });
     }
     return res.json(cached.payload);
+  });
+
+  // POST /postgres-introspect/refresh/:configId
+  // Runs actual introspection queries against the database and caches the result.
+  // The editor "Refresh Schema" button calls this, not the GET endpoint.
+  RED.httpAdmin.post('/postgres-introspect/refresh/:configId', async (req: any, res: any) => {
+    const configId = req.params.configId;
+    const configNode = RED.nodes.getNode(configId);
+    if (!configNode) {
+      return res.status(404).json({ error: 'Config node not found' });
+    }
+    let client: any = null;
+    try {
+      client = await configNode.pgPool.connect();
+
+      // Get PG version
+      const versionResult = await client.query('SHOW server_version');
+      const versionParts = versionResult.rows[0].server_version.split('.');
+      const version = parseInt(versionParts[0], 10) * 10000 + parseInt(versionParts[1] || '0', 10) * 100;
+
+      // Run introspection queries
+      const schema = configNode.schema || 'public';
+      const includeSystemCatalogs = configNode.includeSystemCatalogs === true || configNode.includeSystemCatalogs === 'true';
+      const queries = buildIntrospectionQueries(schema, false);
+      const allRows: any[] = [];
+      for (const q of queries) {
+        const r = await client.query(q);
+        allRows.push(...r.rows);
+      }
+
+      const payload = assembleSchemaPayload(allRows, schema, version);
+
+      // Get database name
+      try {
+        const dbResult = await client.query('SELECT current_database() AS database');
+        payload.database = dbResult.rows[0]?.database || 'unknown';
+      } catch { /* stays unknown */ }
+
+      getSchemaCache().set(configId, { payload, timestamp: Date.now() });
+
+      const tableCount = Object.keys(payload.tables).length;
+      const colCount = Object.values(payload.tables).reduce((sum: number, t: any) => sum + t.columns.length, 0);
+      RED.log.info(`Schema refreshed for config ${configId}: ${tableCount} tables, ${colCount} columns`);
+
+      return res.json({ payload, tableCount, colCount });
+    } catch (err: any) {
+      const structuredError = formatError(err);
+      RED.log.warn(`Schema refresh failed for config ${configId}: ${structuredError.message}`);
+      return res.status(500).json({ error: structuredError.message, code: structuredError.code });
+    } finally {
+      if (client) {
+        try { client.release(); } catch { /* best-effort */ }
+      }
+    }
   });
 
   RED.httpAdmin.post('/postgres-node/generate-query', async (req: any, res: any) => {

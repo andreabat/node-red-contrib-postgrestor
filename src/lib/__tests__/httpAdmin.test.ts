@@ -9,6 +9,17 @@ jest.mock('../schemaCache', () => ({
   getSchemaCache: jest.fn(() => mockSchemaMap),
 }));
 
+jest.mock('../introspect', () => ({
+  buildIntrospectionQueries: jest.fn().mockReturnValue(['SELECT 1']),
+  assembleSchemaPayload: jest.fn().mockReturnValue({
+    database: 'testdb', schema: 'public', version: 150006, tables: { 'public.t': { name: 't', schema: 'public', columns: [{ name: 'c', type: 'int4', nullable: false, isIdentity: false, isGenerated: false }], primaryKey: ['c'], foreignKeys: [], indexes: [] } }, enums: {}
+  }),
+}));
+
+jest.mock('../errorFormatter', () => ({
+  formatError: jest.fn().mockReturnValue({ message: 'mock error' }),
+}));
+
 describe('httpAdmin', () => {
   let routes: Record<string, { method: string; handler: Function }> = {};
   let mockRED: any;
@@ -59,6 +70,57 @@ describe('httpAdmin', () => {
       const handler = routes['GET /postgres-introspect/schema/:configId']?.handler;
       await handler({ params: { configId: 'config-1' } }, mockRes);
       expect(mockRes.json).toHaveBeenCalledWith(cached);
+    });
+  });
+
+  describe('POST /postgres-introspect/refresh/:configId', () => {
+    it('should register the endpoint', () => {
+      const refreshCall = mockRED.httpAdmin.post.mock.calls.find(
+        (c: any[]) => c[0] === '/postgres-introspect/refresh/:configId'
+      );
+      expect(refreshCall).toBeDefined();
+    });
+
+    it('should run introspection and cache the result', async () => {
+      const mockQuery = jest.fn()
+        .mockResolvedValueOnce({ rows: [{ server_version: '15.0' }] })   // version
+        .mockResolvedValueOnce({ rows: [] })                               // columns query
+        .mockResolvedValueOnce({ rows: [{ database: 'testdb' }] });        // current_database
+      const mockClient = { query: mockQuery, release: jest.fn() };
+      const mockConfigNode = { pgPool: { connect: jest.fn().mockResolvedValue(mockClient) } };
+      mockRED.nodes.getNode.mockReturnValue(mockConfigNode);
+
+      const mockRes = { json: jest.fn(), status: jest.fn().mockReturnThis() };
+      const handler = routes['POST /postgres-introspect/refresh/:configId']?.handler;
+      await handler({ params: { configId: 'c1' } }, mockRes);
+
+      expect(mockConfigNode.pgPool.connect).toHaveBeenCalled();
+      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
+        payload: expect.any(Object),
+        tableCount: expect.any(Number),
+        colCount: expect.any(Number),
+      }));
+      // Cache should be populated
+      expect(mockSchemaMap.has('c1')).toBe(true);
+    });
+
+    it('should return 404 when config node not found', async () => {
+      mockRED.nodes.getNode.mockReturnValue(null);
+      const mockRes = { json: jest.fn(), status: jest.fn().mockReturnThis() };
+      const handler = routes['POST /postgres-introspect/refresh/:configId']?.handler;
+      await handler({ params: { configId: 'nonexistent' } }, mockRes);
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return 500 on connection error', async () => {
+      const mockConfigNode = {
+        pgPool: { connect: jest.fn().mockRejectedValue(new Error('Connection refused')) }
+      };
+      mockRED.nodes.getNode.mockReturnValue(mockConfigNode);
+      const mockRes = { json: jest.fn(), status: jest.fn().mockReturnThis() };
+      const handler = routes['POST /postgres-introspect/refresh/:configId']?.handler;
+      await handler({ params: { configId: 'c1' } }, mockRes);
+      expect(mockRes.status).toHaveBeenCalledWith(500);
     });
   });
 

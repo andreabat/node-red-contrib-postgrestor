@@ -443,22 +443,18 @@
       }
       $("#postgres-refresh-schema-btn").click(function() {
         schemaStatus.html('<i class="fa fa-spinner fa-spin"></i> Refreshing...');
-        var configId = self.id;
-        setTimeout(function() {
-          $.getJSON("postgres-introspect/schema/" + configId, function(data) {
-            if (data.stale) {
-              schemaStatus.html('<i class="fa fa-database"></i> Schema: not loaded \u2014 add a PostgresIntrospectNode');
-            } else {
-              var tableCount = Object.keys(data.tables || {}).length;
-              var colCount = 0;
-              var tables = data.tables || {};
-              for (var k in tables) {
-                if (tables.hasOwnProperty(k)) colCount += (tables[k].columns || []).length;
-              }
-              schemaStatus.html('<i class="fa fa-database"></i> Schema: loaded (' + tableCount + ' tables, ' + colCount + ' columns)');
-            }
-          });
-        }, 2000);
+        $.ajax({
+          url: "postgres-introspect/refresh/" + self.id,
+          method: "POST",
+          contentType: "application/json",
+          success: function(data) {
+            schemaStatus.html('<i class="fa fa-database"></i> Schema: loaded (' + data.tableCount + ' tables, ' + data.colCount + ' columns)');
+          },
+          error: function(jqXHR) {
+            var err = jqXHR.responseJSON && jqXHR.responseJSON.error || "Refresh failed";
+            schemaStatus.html('<i class="fa fa-warning"></i> Schema refresh failed: ' + err);
+          }
+        });
       });
     },
      credentials: {
