@@ -24,7 +24,8 @@ jest.mock('../../lib/errorFormatter', () => ({
 }));
 
 import type { SchemaPayload } from '../../lib/types';
-import { PostgresIntrospectNode, getSchemaCache } from '../PostgresIntrospectNode';
+import { PostgresIntrospectNode } from '../PostgresIntrospectNode';
+import { getSchemaCache } from '../../lib/schemaCache';
 import { setRED } from '../../lib/red';
 
 function findInputHandler(ctx: any): Function {

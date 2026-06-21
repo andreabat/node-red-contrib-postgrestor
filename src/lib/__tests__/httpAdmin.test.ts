@@ -3,11 +3,10 @@ import { init } from '../httpAdmin';
 // Mock fetch
 const mockFetch = jest.fn();
 
-// Mock getSchemaCache — httpAdmin imports it from PostgresIntrospectNode
+// Mock getSchemaCache — httpAdmin imports it from ./schemaCache
 const mockSchemaMap = new Map<string, any>();
-jest.mock('../../nodes/PostgresIntrospectNode', () => ({
+jest.mock('../schemaCache', () => ({
   getSchemaCache: jest.fn(() => mockSchemaMap),
-  PostgresIntrospectNode: jest.fn(),
 }));
 
 describe('httpAdmin', () => {

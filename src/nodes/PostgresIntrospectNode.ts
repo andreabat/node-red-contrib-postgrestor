@@ -1,16 +1,8 @@
 import { getREDNodes } from '../lib/red';
 import { formatError } from '../lib/errorFormatter';
 import { buildIntrospectionQueries, assembleSchemaPayload } from '../lib/introspect';
+import { getSchemaCache } from '../lib/schemaCache';
 import type { SchemaPayload } from '../lib/types';
-
-// Module-level schema cache, keyed by config node ID
-// Used because RED.nodes.getNode() may not return the same object reference
-// that was written to by the introspect node's input handler.
-const schemaCache = new Map<string, { payload: SchemaPayload; timestamp: number }>();
-
-export function getSchemaCache(): Map<string, { payload: SchemaPayload; timestamp: number }> {
-  return schemaCache;
-}
 
 interface PostgresIntrospectNodeConfig {
   name: string;
@@ -33,7 +25,7 @@ export function PostgresIntrospectNode(this: any, config: PostgresIntrospectNode
     const configNode = node.config;
 
     // Cache hit — return cached payload without querying
-    const cached = schemaCache.get(config.PostgresDBNode);
+    const cached = getSchemaCache().get(config.PostgresDBNode);
     if (!msg.refresh && cached && cached.timestamp > 0) {
       const age = Date.now() - cached.timestamp;
       if (age < cacheTTL) {
@@ -80,7 +72,7 @@ export function PostgresIntrospectNode(this: any, config: PostgresIntrospectNode
       // Cache on config node + module-level map
       configNode._schemaCache = payload;
       configNode._schemaTimestamp = Date.now();
-      schemaCache.set(config.PostgresDBNode, { payload, timestamp: Date.now() });
+      getSchemaCache().set(config.PostgresDBNode, { payload, timestamp: Date.now() });
 
       const tableCount = Object.keys(payload.tables).length;
       const colCount = Object.values(payload.tables).reduce((sum, t) => sum + t.columns.length, 0);

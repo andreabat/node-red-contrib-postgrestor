@@ -1,6 +1,6 @@
 import { getRED, getREDNodes } from './red';
+import { getSchemaCache } from './schemaCache';
 import type { SchemaPayload } from './types';
-import { getSchemaCache } from '../nodes/PostgresIntrospectNode';
 
 function buildSystemPrompt(schema: SchemaPayload, style: string): string {
   const tableList = Object.entries(schema.tables).map(([key, table]) => {
