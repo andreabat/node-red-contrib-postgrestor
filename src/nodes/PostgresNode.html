@@ -297,9 +297,24 @@
         }
       };
 
-      // Register the custom completer with ACE's language tools
-      var langTools = ace.require("ace/ext/language_tools");
-      langTools.addCompleter(schemaCompleter);
+      // Register schema completer with ACE editor
+      // RED.editor.createEditor returns a wrapper; raw ACE instance is at .editor
+      try {
+        var rawEditor = this.editor.editor || this.editor;
+        console.log("[postgres-autocomplete] registering completer, rawEditor:", typeof rawEditor, "has completers:", !!rawEditor.completers);
+        if (rawEditor.completers) {
+          rawEditor.completers.push(schemaCompleter);
+          console.log("[postgres-autocomplete] completer registered via editor.completers");
+        } else if (typeof ace !== 'undefined' && ace.require) {
+          var langTools = ace.require("ace/ext/language_tools");
+          langTools.addCompleter(schemaCompleter);
+          console.log("[postgres-autocomplete] completer registered via langTools");
+        } else {
+          console.log("[postgres-autocomplete] WARNING: could not register completer");
+        }
+      } catch(e) {
+        console.log("[postgres-autocomplete] error registering completer:", e.message);
+      }
 
       // Initialize type mapping checkbox states from current config
       $("#node-input-mapNumeric").prop("checked", this.mapNumeric === true || this.mapNumeric === 'true');
