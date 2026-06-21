@@ -283,12 +283,13 @@
               console.log("[postgres-autocomplete] textToCursor last 50 chars:", JSON.stringify(textToCursor.slice(-50)));
 
               var suggestions = [];
-              var word = model.getWordUntilPosition(position);
+              // Range: narrow to cursor position only (not the FROM/JOIN keyword)
+              // getWordUntilPosition would include "from" which filters out all table names
               var range = {
                 startLineNumber: position.lineNumber,
                 endLineNumber: position.lineNumber,
-                startColumn: word.startColumn,
-                endColumn: word.endColumn,
+                startColumn: position.column,
+                endColumn: position.column,
               };
               var fromMatch = textToCursor.match(/\bFROM\s*("?[\w.]*"?)$/i);
               var joinMatch = textToCursor.match(/\bJOIN\s*("?[\w.]*"?)$/i);
