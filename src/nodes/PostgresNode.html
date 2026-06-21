@@ -4,7 +4,8 @@
       <i class="icon-tag"></i>
       <span data-i18n="postgres.label.name"></span>
     </label>
-    <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name"> </div>
+    <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name">
+  </div>
   <div class="form-row">
     <label for="node-input-PostgresDBNode">
       <i class="fa fa-server"></i>
@@ -12,137 +13,107 @@
     </label>
     <input type="text" id="node-input-PostgresDBNode">
   </div>
-  <div class="form-row">
-    <input type="checkbox" id="node-input-throwErrors" style="display: inline-block; width: auto; vertical-align: top;">
-    <label for="node-input-throwErrors">
-      <span data-i18n="postgres.label.throwErrors">Throw Exception</span>
-    </label>
-  </div>
-  <div class="form-row">
-    <input type="checkbox" id="node-input-useNamedParams" style="display: inline-block; width: auto; vertical-align: top;">
-    <label for="node-input-useNamedParams">
-      <span data-i18n="postgres.label.useNamedParams">Named Parameters</span>
-    </label>
-  </div>
-  <div class="form-row">
-    <input type="checkbox" id="node-input-transactionMode" style="display: inline-block; width: auto; vertical-align: top;">
-    <label for="node-input-transactionMode">
-      <span data-i18n="postgres.label.transactionMode">Transaction Mode</span>
-    </label>
-  </div>
-  <div class="form-row">
-    <label><span data-i18n="postgres.section.advanced">Advanced</span></label>
-  </div>
-  <div class="form-row">
-    <input type="checkbox" id="node-input-cursorMode" style="display: inline-block; width: auto; vertical-align: top;">
-    <label for="node-input-cursorMode">
-      <span data-i18n="postgres.label.cursorMode">Cursor Mode</span>
-    </label>
-  </div>
-  <div class="form-row">
-    <input type="checkbox" id="node-input-copyMode" style="display: inline-block; width: auto; vertical-align: top;">
-    <label for="node-input-copyMode">
-      <span data-i18n="postgres.label.copyMode">COPY Mode</span>
-    </label>
-  </div>
-  <div class="form-row">
-    <input type="checkbox" id="node-input-retryEnabled" style="display: inline-block; width: auto; vertical-align: top;">
-    <label for="node-input-retryEnabled">
-      <span data-i18n="postgres.label.retryEnabled">Retry on Transient Errors</span>
-    </label>
-  </div>
-  <div class="form-row">
-    <label for="node-input-queryTimeout">
-      <i class="fa fa-clock-o"></i>
-      <span data-i18n="postgres.label.queryTimeout">Query Timeout (ms)</span>
-    </label>
-    <input type="text" id="node-input-queryTimeout" style="width: 70%;">
-    <input type="hidden" id="node-input-queryTimeoutFieldType">
-  </div>
-  <div class="form-row">
-    <label for="node-input-cursorBatchSize">
-      <span data-i18n="postgres.label.cursorBatchSize">Cursor Batch Size</span>
-    </label>
-    <input type="text" id="node-input-cursorBatchSize" style="width: 70%;">
-    <input type="hidden" id="node-input-cursorBatchSizeFieldType">
-  </div>
-  <div class="form-row">
-    <label for="node-input-maxRetries">
-      <span data-i18n="postgres.label.maxRetries">Max Retries</span>
-    </label>
-    <input type="text" id="node-input-maxRetries" style="width: 70%;">
-    <input type="hidden" id="node-input-maxRetriesFieldType">
-  </div>
-  <div class="form-row">
-    <label for="node-input-retryBaseDelay">
-      <span data-i18n="postgres.label.retryBaseDelay">Retry Base Delay (ms)</span>
-    </label>
-    <input type="text" id="node-input-retryBaseDelay" style="width: 70%;">
-    <input type="hidden" id="node-input-retryBaseDelayFieldType">
-  </div>
-  <div class="form-row">
-    <label><span data-i18n="postgres.section.typeMapping">Type Mapping</span></label>
-  </div>
-  <div class="form-row">
-    <input type="checkbox" id="node-input-mapNumeric" style="display: inline-block; width: auto; vertical-align: top;">
-    <label for="node-input-mapNumeric">
-      <span data-i18n="postgres.label.mapNumeric">Map numeric → number</span>
-    </label>
-  </div>
-  <div class="form-row">
-    <input type="checkbox" id="node-input-mapTimestamptz" style="display: inline-block; width: auto; vertical-align: top;">
-    <label for="node-input-mapTimestamptz">
-      <span data-i18n="postgres.label.mapTimestamptz">Map timestamptz → ISO 8601</span>
-    </label>
-  </div>
-  <div class="form-row">
-    <input type="checkbox" id="node-input-parseJsonb" style="display: inline-block; width: auto; vertical-align: top;">
-    <label for="node-input-parseJsonb">
-      <span data-i18n="postgres.label.parseJsonb">Parse jsonb → object</span>
-    </label>
-  </div>
-  <div class="form-row" style="position: relative; margin-bottom: 0px;">
-    <label for="node-input-query">
+
+  <!-- Query Editor — main element -->
+  <div class="form-row" style="margin-bottom: 0;">
+    <label for="node-input-query" style="align-self: flex-start; padding-top: 4px;">
       <i class="fa fa-file-code-o"></i>
-      <span data-i18n="postgres.label.query"></span>
+      <span>Query</span>
+      <div id="postgres-type-hints" style="font-size: 0.8em; color: #888; font-weight: normal; margin-top: 2px;"></div>
     </label>
-    <input type="hidden" id="node-input-query" autofocus="autofocus"> </div>
-  <div class="form-row node-text-editor-row">
+    <input type="hidden" id="node-input-query" autofocus="autofocus">
+  </div>
+  <div class="form-row node-text-editor-row" style="margin-top: 0;">
     <div style="height: 300px; min-height: 150px;" class="node-text-editor" id="node-input-editor"></div>
   </div>
-  <div class="form-row">
-    <div id="postgres-type-hints" style="font-size: 0.85em; color: #666; margin-top: 2px; min-height: 1.2em;"></div>
-  </div>
-  <div class="form-row">
-    <button id="postgres-gen-query-btn" class="red-ui-button" title="Generate a query template from schema">
-      <i class="fa fa-bolt"></i> Generate Query Template
+
+  <!-- Toolbar: Query Gen + Magic Wand inline -->
+  <div class="form-row" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    <button id="postgres-gen-query-btn" class="red-ui-button" title="Generate a query template from schema" style="flex-shrink: 0;">
+      <i class="fa fa-bolt"></i> Generate
+    </button>
+    <input type="text" id="postgres-magic-prompt" placeholder="&#x1FA84; Describe what query you want..." style="flex: 1; min-width: 200px;">
+    <button id="postgres-magic-generate" class="red-ui-button" style="flex-shrink: 0;">
+      <i class="fa fa-magic"></i>
     </button>
   </div>
-  <div class="form-row">
-    <label style="display: flex; align-items: center; gap: 4px;">
-      <span>&#x1FA84; Magic Wand</span>
-      <span style="font-size: 0.8em; color: #888;">(AI query generator)</span>
-    </label>
-    <div style="display: flex; gap: 6px;">
-      <input type="text" id="postgres-magic-prompt" placeholder="Describe what query you want..." style="flex: 1;">
-      <button id="postgres-magic-generate" class="red-ui-button">
-        <i class="fa fa-magic"></i> Generate
-      </button>
+  <div id="postgres-magic-result" style="display: none; margin: 4px 0; padding: 8px; background: #f0f0f0; border-radius: 4px; font-family: monospace; font-size: 0.9em; white-space: pre-wrap; max-height: 120px; overflow-y: auto;"></div>
+  <div id="postgres-magic-actions" style="display: none; margin: 4px 0; gap: 4px;">
+    <button id="postgres-magic-insert" class="red-ui-button red-ui-button-small"><i class="fa fa-check"></i> Insert</button>
+    <button id="postgres-magic-retry" class="red-ui-button red-ui-button-small"><i class="fa fa-refresh"></i> Retry</button>
+    <button id="postgres-magic-cancel" class="red-ui-button red-ui-button-small"><i class="fa fa-times"></i> Cancel</button>
+  </div>
+  <div id="postgres-magic-error" style="display: none; margin: 4px 0; color: #c00; font-size: 0.85em;"></div>
+
+  <!-- Collapsible Query Settings -->
+  <div class="form-row" style="margin-top: 8px;">
+    <a href="#" id="postgres-settings-toggle" style="color: #666; text-decoration: none; font-size: 0.9em;">
+      <i class="fa fa-caret-right"></i> Query Settings
+    </a>
+  </div>
+  <div id="postgres-settings-body" style="display: none;">
+    <div class="form-row">
+      <input type="checkbox" id="node-input-throwErrors" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-input-throwErrors"><span data-i18n="postgres.label.throwErrors">Throw Exception</span></label>
     </div>
-    <div id="postgres-magic-result" style="display: none; margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 4px; font-family: monospace; font-size: 0.9em; white-space: pre-wrap; max-height: 120px; overflow-y: auto;">
+    <div class="form-row">
+      <input type="checkbox" id="node-input-useNamedParams" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-input-useNamedParams"><span data-i18n="postgres.label.useNamedParams">Named Parameters</span></label>
     </div>
-    <div id="postgres-magic-actions" style="display: none; margin-top: 4px; gap: 4px;">
-      <button id="postgres-magic-insert" class="red-ui-button red-ui-button-small">
-        <i class="fa fa-check"></i> Insert
-      </button>
-      <button id="postgres-magic-retry" class="red-ui-button red-ui-button-small">
-        <i class="fa fa-refresh"></i> Retry
-      </button>
-      <button id="postgres-magic-cancel" class="red-ui-button red-ui-button-small">
-        <i class="fa fa-times"></i> Cancel
-      </button>
+    <div class="form-row">
+      <input type="checkbox" id="node-input-transactionMode" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-input-transactionMode"><span data-i18n="postgres.label.transactionMode">Transaction Mode</span></label>
     </div>
-    <div id="postgres-magic-error" style="display: none; margin-top: 4px; color: #c00; font-size: 0.85em;"></div>
+    <div class="form-row">
+      <label><span>Advanced</span></label>
+    </div>
+    <div class="form-row">
+      <input type="checkbox" id="node-input-cursorMode" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-input-cursorMode"><span data-i18n="postgres.label.cursorMode">Cursor Mode</span></label>
+    </div>
+    <div class="form-row">
+      <input type="checkbox" id="node-input-copyMode" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-input-copyMode"><span data-i18n="postgres.label.copyMode">COPY Mode</span></label>
+    </div>
+    <div class="form-row">
+      <input type="checkbox" id="node-input-retryEnabled" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-input-retryEnabled"><span data-i18n="postgres.label.retryEnabled">Retry on Transient Errors</span></label>
+    </div>
+    <div class="form-row">
+      <label for="node-input-queryTimeout"><i class="fa fa-clock-o"></i> <span data-i18n="postgres.label.queryTimeout">Query Timeout (ms)</span></label>
+      <input type="text" id="node-input-queryTimeout" style="width: 70%;">
+      <input type="hidden" id="node-input-queryTimeoutFieldType">
+    </div>
+    <div class="form-row">
+      <label for="node-input-cursorBatchSize"><span data-i18n="postgres.label.cursorBatchSize">Cursor Batch Size</span></label>
+      <input type="text" id="node-input-cursorBatchSize" style="width: 70%;">
+      <input type="hidden" id="node-input-cursorBatchSizeFieldType">
+    </div>
+    <div class="form-row">
+      <label for="node-input-maxRetries"><span data-i18n="postgres.label.maxRetries">Max Retries</span></label>
+      <input type="text" id="node-input-maxRetries" style="width: 70%;">
+      <input type="hidden" id="node-input-maxRetriesFieldType">
+    </div>
+    <div class="form-row">
+      <label for="node-input-retryBaseDelay"><span data-i18n="postgres.label.retryBaseDelay">Retry Base Delay (ms)</span></label>
+      <input type="text" id="node-input-retryBaseDelay" style="width: 70%;">
+      <input type="hidden" id="node-input-retryBaseDelayFieldType">
+    </div>
+    <div class="form-row">
+      <label><span>Type Mapping</span></label>
+    </div>
+    <div class="form-row">
+      <input type="checkbox" id="node-input-mapNumeric" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-input-mapNumeric"><span data-i18n="postgres.label.mapNumeric">Map numeric → number</span></label>
+    </div>
+    <div class="form-row">
+      <input type="checkbox" id="node-input-mapTimestamptz" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-input-mapTimestamptz"><span data-i18n="postgres.label.mapTimestamptz">Map timestamptz → ISO 8601</span></label>
+    </div>
+    <div class="form-row">
+      <input type="checkbox" id="node-input-parseJsonb" style="display: inline-block; width: auto; vertical-align: top;">
+      <label for="node-input-parseJsonb"><span data-i18n="postgres.label.parseJsonb">Parse jsonb → object</span></label>
+    </div>
   </div>
 </script>
 <script type="text/javascript">
@@ -244,6 +215,20 @@
         }
       });
       this.editor.focus();
+
+      // Collapsible settings toggle
+      $("#postgres-settings-toggle").click(function(e) {
+        e.preventDefault();
+        var body = $("#postgres-settings-body");
+        var icon = $(this).find("i");
+        if (body.is(":visible")) {
+          body.slideUp(150);
+          icon.removeClass("fa-caret-down").addClass("fa-caret-right");
+        } else {
+          body.slideDown(150);
+          icon.removeClass("fa-caret-right").addClass("fa-caret-down");
+        }
+      });
 
       // Initialize type mapping checkbox states from current config
       $("#node-input-mapNumeric").prop("checked", this.mapNumeric === true || this.mapNumeric === 'true');
