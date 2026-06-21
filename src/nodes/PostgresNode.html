@@ -283,8 +283,8 @@
               console.log("[postgres-autocomplete] textToCursor last 50 chars:", JSON.stringify(textToCursor.slice(-50)));
 
               var suggestions = [];
-              var fromMatch = textToCursor.match(/\bFROM\s+("?[\w.]*"?)$/i);
-              var joinMatch = textToCursor.match(/\bJOIN\s+("?[\w.]*"?)$/i);
+              var fromMatch = textToCursor.match(/\bFROM\s*("?[\w.]*"?)$/i);
+              var joinMatch = textToCursor.match(/\bJOIN\s*("?[\w.]*"?)$/i);
               console.log("[postgres-autocomplete] fromMatch:", fromMatch, "joinMatch:", joinMatch);
               if (fromMatch || joinMatch) {
                 var partial = (fromMatch || joinMatch)[1].replace(/"/g, '').toLowerCase();
