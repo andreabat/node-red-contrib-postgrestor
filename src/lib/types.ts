@@ -116,3 +116,64 @@ export interface StructuredError {
   where?: string;
   routine?: string;
 }
+
+export interface SchemaPayload {
+  database: string;
+  schema: string;
+  version: number;
+
+  tables: Record<string, TableDef>;
+  enums: Record<string, EnumDef>;
+}
+
+export interface TableDef {
+  name: string;
+  schema: string;
+  columns: ColumnDef[];
+  primaryKey: string[];
+  foreignKeys: ForeignKeyDef[];
+  indexes: IndexDef[];
+  estimatedRows?: number;
+}
+
+export interface ColumnDef {
+  name: string;
+  type: string;
+  nullable: boolean;
+  defaultValue?: string;
+  isIdentity: boolean;
+  isGenerated: boolean;
+  maxLength?: number;
+  enumName?: string;
+  comment?: string;
+}
+
+export interface ForeignKeyDef {
+  constraintName: string;
+  columns: string[];
+  foreignSchema: string;
+  foreignTable: string;
+  foreignColumns: string[];
+  onDelete: string;
+  onUpdate: string;
+}
+
+export interface IndexDef {
+  name: string;
+  columns: string[];
+  unique: boolean;
+  isPrimary: boolean;
+  method: string;
+}
+
+export interface EnumDef {
+  name: string;
+  schema: string;
+  values: string[];
+}
+
+export interface OpenRouterConfig {
+  openrouterApiKey: string;
+  model: string;
+  promptStyle: 'concise' | 'balanced' | 'verbose';
+}
