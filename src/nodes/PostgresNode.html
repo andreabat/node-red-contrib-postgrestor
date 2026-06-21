@@ -272,7 +272,7 @@
         } else {
           monaco.languages.registerCompletionItemProvider(langId, {
             provideCompletionItems: function(model, position) {
-              console.log("[postgres-autocomplete] provideCompletionItems called, schemaLoaded:", !!self._schemaCache);
+              console.log("[postgres-autocomplete] called, schemaLoaded:", !!self._schemaCache);
               if (!self._schemaCache) return { suggestions: [] };
               var tables = self._schemaCache.tables || {};
 
@@ -280,10 +280,12 @@
                 startLineNumber: 1, startColumn: 1,
                 endLineNumber: position.lineNumber, endColumn: position.column,
               });
+              console.log("[postgres-autocomplete] textToCursor last 50 chars:", JSON.stringify(textToCursor.slice(-50)));
 
               var suggestions = [];
               var fromMatch = textToCursor.match(/\bFROM\s+("?[\w.]*"?)$/i);
               var joinMatch = textToCursor.match(/\bJOIN\s+("?[\w.]*"?)$/i);
+              console.log("[postgres-autocomplete] fromMatch:", fromMatch, "joinMatch:", joinMatch);
               if (fromMatch || joinMatch) {
                 var partial = (fromMatch || joinMatch)[1].replace(/"/g, '').toLowerCase();
                 for (var key in tables) {
