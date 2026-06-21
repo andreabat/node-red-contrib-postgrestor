@@ -245,6 +245,63 @@
       });
       this.editor.focus();
 
+      // Schema-aware autocomplete
+      var schemaCompleter = {
+        getCompletions: function(editor, session, pos, prefix, callback) {
+          if (!self._schemaCache) { callback(null, []); return; }
+          var tables = self._schemaCache.tables || {};
+          var line = session.getLine(pos.row);
+          var lineUpToCursor = line.substring(0, pos.column);
+          var suggestions = [];
+
+          // Determine context: are we after FROM/JOIN (suggest tables) or after a table (suggest columns)?
+          var fromMatch = lineUpToCursor.match(/FROM\s+("?[\w.]*"?)$/i);
+          var joinMatch = lineUpToCursor.match(/JOIN\s+("?[\w.]*"?)$/i);
+          if (fromMatch || joinMatch) {
+            // Suggest table names
+            var partial = (fromMatch || joinMatch)[1].replace(/"/g, '');
+            for (var key in tables) {
+              if (tables.hasOwnProperty(key) && (!partial || key.indexOf(partial) >= 0)) {
+                suggestions.push({ caption: key, value: key, meta: 'table', score: 100 });
+              }
+            }
+          } else {
+            // Try to detect a table reference followed by a dot → suggest columns
+            var dotMatch = lineUpToCursor.match(/[\s(](\w+)\.(\w*)$/);
+            if (dotMatch) {
+              var alias = dotMatch[1];
+              var colPrefix = dotMatch[2];
+              // Find the table matching this alias
+              for (var key in tables) {
+                if (tables.hasOwnProperty(key)) {
+                  var shortName = key.split('.').pop();
+                  if (shortName === alias || key === alias) {
+                    var cols = tables[key].columns || [];
+                    for (var i = 0; i < cols.length; i++) {
+                      if (!colPrefix || cols[i].name.indexOf(colPrefix) === 0) {
+                        suggestions.push({
+                          caption: cols[i].name,
+                          value: cols[i].name,
+                          meta: cols[i].type + (tables[key].primaryKey.indexOf(cols[i].name) >= 0 ? ' PK' : ''),
+                          score: 90
+                        });
+                      }
+                    }
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          callback(null, suggestions);
+        }
+      };
+
+      // Register the custom completer with ACE's language tools
+      if (this.editor.editor && this.editor.editor.completers) {
+        this.editor.editor.completers.push(schemaCompleter);
+      }
+
       // Initialize type mapping checkbox states from current config
       $("#node-input-mapNumeric").prop("checked", this.mapNumeric === true || this.mapNumeric === 'true');
       $("#node-input-mapTimestamptz").prop("checked", this.mapTimestamptz === true || this.mapTimestamptz === 'true');
