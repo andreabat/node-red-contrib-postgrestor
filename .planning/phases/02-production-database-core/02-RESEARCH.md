@@ -763,32 +763,32 @@ this.editor = RED.editor.createEditor({
 | A5 | `SET statement_timeout` persists per-client but clients are returned to pool and reused; resetting to 0 in `finally` is sufficient to prevent timeout leakage | Query Timeout (QUERY-03) | If `finally` doesn't execute (process crash), pooled client retains timeout for next user; pool-level default with per-query override may be safer |
 | A6 | The existing Mustache rendering runs BEFORE named parameter binding, and `{{msg.params.field}}` syntax in SQL is not confused with `$N` positional parameters | Named Params (QUERY-01) | Order matters: if Mustache injects `$N` references, they'd need to be captured before extraction; recommend Mustache runs first, as it does currently |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **DATABASE_URL Query Parameter Parsing (POOL-04)**
    - What we know: `pg-connection-string` `parse()` supports `sslmode`, `application_name`, `sslcert`, `sslkey`, `sslrootcert` in query parameters; URL module ignores query params
    - What's unclear: Should URL query parameters override individual fields, or vice versa? Should `sslmode=require` in the URL also set SSL config?
-   - Recommendation: Use `pg-connection-string` for URI parsing. URL query params (sslmode, pool limits) should augment the config, but individual fields in the editor UI should take precedence (explicit > implicit). This matches the "override" semantics discussed.
+   - RESOLVED: Use `pg-connection-string` for URI parsing. URL query params (sslmode, pool limits) should augment the config, but individual fields in the editor UI should take precedence (explicit > implicit). This matches the "override" semantics discussed.
 
 2. **Pool Health Polling Interval (POOL-02)**
    - What we know: `pool.totalCount`, `pool.idleCount`, `pool.waitingCount` are synchronously readable properties
    - What's unclear: Should health be polled on a timer or refreshed on events? What minimum viable display granularity?
-   - Recommendation: Poll every 5 seconds via `setInterval`. Display all 4 metrics (active, idle, waiting, total) as `"Active: X | Idle: Y | Waiting: Z | Total: W"`. Use `pool.on('error')` for immediate error status.
+   - RESOLVED: Poll every 30 seconds via `setInterval` (plan 02-01). Display all 4 metrics (active, idle, waiting, total) as `"Active: N  Idle: M  Waiting: W  Total: T"`. Use `pool.on('error')` for immediate error status.
 
 3. **Type Mapping: Opt-in vs Opt-out (REL-03)**
    - What we know: Changing NUMERIC→number is a breaking change. Timestamptz→ISO is also a behavior change (from Date object).
    - What's unclear: Default on or off? Should numeric, timestamp, and jsonb have separate toggles or one "enable type mapping" toggle?
-   - Recommendation: **Opt-in per node (off by default)**. Three separate checkboxes: "Map NUMERIC → Number", "Map TIMESTAMPTZ → ISO string", "Auto-parse JSONB" (the last one being on-by-default since pg already parses JSONB). This avoids breaking existing flows while allowing new flows to opt in.
+   - RESOLVED: **Opt-in per node (off by default)**. Three separate checkboxes: "Map NUMERIC → Number", "Map TIMESTAMPTZ → ISO string", "Auto-parse JSONB" (the last one being on-by-default since pg already parses JSONB). This avoids breaking existing flows while allowing new flows to opt in.
 
 4. **Named Parameter Syntax Convention (QUERY-01)**
    - What we know: `$1, $2,...` are positional. `msg.params = { name: 'Alice' }` needs a mapping convention.
    - What's unclear: Should keys match positionally (by insertion order of `$N` references) or by naming convention (e.g., `$name` syntax in query)?
-   - Recommendation: Keep `$1, $2` as the positional references. Extract all `$N` from the query, sort numerically, then map `msg.params` keys by their order in the object (as returned by `Object.keys()`). Document that `msg.params` keys should be ordered to match `$1, $2, $3`. For clarity, consider supporting `msg.params` as an array (existing behavior, backward compatible) and `msg.params` as an object (new behavior, opt-in).
+   - RESOLVED: Keep `$1, $2` as the positional references. Extract all `$N` from the query, sort numerically, then map `msg.params` keys by their order in the object (as returned by `Object.keys()`). Document that `msg.params` keys should be ordered to match `$1, $2, $3`. For clarity, also support `msg.params` as an array (existing behavior, backward compatible) and `msg.params` as an object (new behavior, opt-in via namedParams toggle).
 
 5. **Node-RED ACE Theme Consistency (QUERY-04)**
    - What we know: ACE editor supports themes; Node-RED has light/dark mode
    - What's unclear: Should the ACE theme auto-match Node-RED's theme, or use a fixed theme?
-   - Recommendation: Use a neutral ACE theme (`tomorrow` for light, `tomorrow_night` for dark) — detect Node-RED's current theme via `RED.settings.theme` or CSS class on body, and set ACE theme accordingly. Fallback to `tomorrow` if theme detection unavailable.
+   - RESOLVED: Use `ace/theme/tomorrow` as the fixed ACE theme (plan 02-03). RESEARCH.md confirms ACE is bundled with Node-RED 3.x and already in use. UI-SPEC suggested CodeMirror 6 but RESEARCH identifies it as unnecessary external dependency — ACE is the correct choice.
 
 ## Environment Availability
 

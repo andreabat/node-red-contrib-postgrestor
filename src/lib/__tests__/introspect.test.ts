@@ -1,32 +1,35 @@
-import { buildIntrospectionQuery, assembleSchemaPayload } from '../introspect';
+import { buildIntrospectionQueries, assembleSchemaPayload } from '../introspect';
 
-describe('buildIntrospectionQuery', () => {
-  it('should generate SQL targeting a specific schema', () => {
-    const sql = buildIntrospectionQuery('public', false);
-    expect(sql).toContain("WHERE nc.nspname = 'public'");
-    expect(sql).toContain('information_schema.columns');
-    expect(sql).toContain('ORDER BY');
+describe('buildIntrospectionQueries', () => {
+  it('should return 5 queries for a single schema', () => {
+    const queries = buildIntrospectionQueries('public', false);
+    expect(queries).toHaveLength(5);
+    expect(queries[0]).toContain('information_schema.columns');
+    expect(queries[1]).toContain('PRIMARY KEY');
+    expect(queries[2]).toContain('FOREIGN KEY');
+    expect(queries[3]).toContain('pg_index');
+    expect(queries[4]).toContain('pg_enum');
+  });
+
+  it('should target a specific schema in the columns query', () => {
+    const queries = buildIntrospectionQueries('public', false);
+    expect(queries[0]).toContain("WHERE nc.nspname = 'public'");
   });
 
   it('should exclude system catalogs in index query when includeSystemCatalogs is false', () => {
-    const sql = buildIntrospectionQuery('public', false);
-    expect(sql).toContain("WHERE n.nspname NOT IN ('information_schema', 'pg_catalog')");
+    const queries = buildIntrospectionQueries('public', false);
+    expect(queries[3]).toContain("WHERE n.nspname NOT IN ('information_schema', 'pg_catalog')");
   });
 
   it('should not filter system catalogs when includeSystemCatalogs is true', () => {
-    const sql = buildIntrospectionQuery('public', true);
-    expect(sql).not.toContain("n.nspname NOT IN");
+    const queries = buildIntrospectionQueries('public', true);
+    expect(queries[3]).toContain("WHERE n.nspname = 'public'");
+    expect(queries[3]).not.toContain("NOT IN");
   });
 
-  it('should include enum query', () => {
-    const sql = buildIntrospectionQuery('public', false);
-    expect(sql).toContain('pg_enum');
-    expect(sql).toContain('pg_type');
-  });
-
-  it('should include description query for comments', () => {
-    const sql = buildIntrospectionQuery('public', false);
-    expect(sql).toContain('pg_description');
+  it('should include pg_description in columns query for comments', () => {
+    const queries = buildIntrospectionQueries('public', false);
+    expect(queries[0]).toContain('pg_description');
   });
 });
 

@@ -3,3 +3,8 @@ node_modules/
 dist/
 *.tsbuildinfo
 coverage/
+.codeboarding*
+.codeboarding/
+.codegraph/*
+.planning/*
+coverage

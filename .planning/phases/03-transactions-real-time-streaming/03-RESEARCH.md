@@ -585,7 +585,7 @@ const safeSql = format('LISTEN %I', channelName);
 | A6 | Node-RED `node.send()` with multiple sequential calls (not array) emits messages in order through a single output | Architecture Patterns / Cursor | Low — confirmed via Node-RED docs; multi-message sending is standard |
 | A7 | pg-cursor 2.20.0 (very recent publish) is the same package as the longstanding pg-cursor from brianc/node-postgres — just a routine republish | Package Legitimacy | Medium — if it's actually a slopsquatted package, the planner's checkpoint will catch it |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **pg-cursor SUS verdict — is this a slopsquat or a legitimate republish?**
    - What we know: Published 2026-05-18 on npm, repo is `brianc/node-postgres`, 1.9M weekly downloads, flagged `[SUS]` for "too-new" by legitimacy checker

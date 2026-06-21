@@ -13,7 +13,7 @@ jest.mock('../../lib/red', () => {
 });
 
 jest.mock('../../lib/introspect', () => ({
-  buildIntrospectionQuery: jest.fn().mockReturnValue('SELECT 1;'),
+  buildIntrospectionQueries: jest.fn().mockReturnValue(['SELECT 1']),
   assembleSchemaPayload: jest.fn().mockReturnValue({
     database: 'testdb', schema: 'public', version: 150006, tables: {}, enums: {}
   }),

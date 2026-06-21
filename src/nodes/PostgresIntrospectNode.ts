@@ -1,6 +1,6 @@
 import { getREDNodes } from '../lib/red';
 import { formatError } from '../lib/errorFormatter';
-import { buildIntrospectionQuery, assembleSchemaPayload } from '../lib/introspect';
+import { buildIntrospectionQueries, assembleSchemaPayload } from '../lib/introspect';
 import type { SchemaPayload } from '../lib/types';
 
 interface PostgresIntrospectNodeConfig {
@@ -49,12 +49,16 @@ export function PostgresIntrospectNode(this: any, config: PostgresIntrospectNode
       const versionParts = versionResult.rows[0].server_version.split('.');
       const version = parseInt(versionParts[0], 10) * 10000 + parseInt(versionParts[1] || '0', 10) * 100;
 
-      // Run introspection queries
-      const query = buildIntrospectionQuery(config.schema, includeSystemCatalogs);
-      const result = await client.query(query);
+      // Run introspection queries (each is a single statement — pg driver rejects multi-statement strings)
+      const queries = buildIntrospectionQueries(config.schema, includeSystemCatalogs);
+      const allRows: any[] = [];
+      for (const q of queries) {
+        const r = await client.query(q);
+        allRows.push(...r.rows);
+      }
 
       // Assemble payload
-      const payload = assembleSchemaPayload(result.rows, config.schema, version);
+      const payload = assembleSchemaPayload(allRows, config.schema, version);
 
       // Get database name
       try {

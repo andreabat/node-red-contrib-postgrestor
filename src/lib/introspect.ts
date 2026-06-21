@@ -1,6 +1,6 @@
 import type { SchemaPayload, TableDef, ColumnDef, ForeignKeyDef, IndexDef, EnumDef } from './types';
 
-export function buildIntrospectionQuery(schema: string, includeSystemCatalogs: boolean): string {
+export function buildIntrospectionQueries(schema: string, includeSystemCatalogs: boolean): string[] {
   const schemaFilter = includeSystemCatalogs
     ? `WHERE table_schema IN (${schema.split(',').map(s => `'${s.trim()}'`).join(',')})`
     : `WHERE nc.nspname = '${schema}'`;
@@ -9,9 +9,7 @@ export function buildIntrospectionQuery(schema: string, includeSystemCatalogs: b
     ? `WHERE n.nspname = '${schema}'`
     : `WHERE n.nspname NOT IN ('information_schema', 'pg_catalog') AND n.nspname = '${schema}'`;
 
-  return `
--- Columns
-SELECT
+  const columnsQuery = `SELECT
   c.table_schema,
   c.table_name,
   c.column_name,
@@ -28,10 +26,9 @@ JOIN pg_class pc ON pc.relname = c.table_name
 JOIN pg_namespace nc ON nc.oid = pc.relnamespace AND nc.nspname = c.table_schema
 LEFT JOIN pg_description d ON d.objoid = pc.oid AND d.objsubid = c.ordinal_position
 ${schemaFilter}
-ORDER BY c.table_schema, c.table_name, c.ordinal_position;
+ORDER BY c.table_schema, c.table_name, c.ordinal_position`;
 
--- Primary keys
-SELECT
+  const pkQuery = `SELECT
   kcu.table_schema,
   kcu.table_name,
   kcu.column_name,
@@ -43,10 +40,9 @@ JOIN information_schema.key_column_usage kcu
  AND tc.table_schema = kcu.table_schema
  AND tc.table_name = kcu.table_name
 WHERE tc.constraint_type = 'PRIMARY KEY'
-  AND tc.table_schema = '${schema}';
+  AND tc.table_schema = '${schema}'`;
 
--- Foreign keys
-SELECT
+  const fkQuery = `SELECT
   kcu.table_schema,
   kcu.table_name,
   kcu.column_name,
@@ -69,10 +65,9 @@ JOIN information_schema.referential_constraints rc
   ON tc.constraint_name = rc.constraint_name
  AND tc.constraint_schema = rc.constraint_schema
 WHERE tc.constraint_type = 'FOREIGN KEY'
-  AND tc.table_schema = '${schema}';
+  AND tc.table_schema = '${schema}'`;
 
--- Indexes
-SELECT
+  const indexQuery = `SELECT
   n.nspname AS table_schema,
   c.relname AS table_name,
   i.relname AS index_name,
@@ -87,10 +82,9 @@ JOIN pg_namespace n ON n.oid = c.relnamespace
 JOIN pg_am am ON am.oid = i.relam
 JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(ix.indkey)
 ${indexWhereClause}
-GROUP BY n.nspname, c.relname, i.relname, ix.indisunique, ix.indisprimary, am.amname
+GROUP BY n.nspname, c.relname, i.relname, ix.indisunique, ix.indisprimary, am.amname`;
 
--- Enums
-SELECT
+  const enumQuery = `SELECT
   n.nspname AS enum_schema,
   t.typname AS enum_name,
   e.enumlabel AS enum_value
@@ -98,8 +92,9 @@ FROM pg_enum e
 JOIN pg_type t ON t.oid = e.enumtypid
 JOIN pg_namespace n ON n.oid = t.typnamespace
 WHERE n.nspname = '${schema}'
-ORDER BY n.nspname, t.typname, e.enumsortorder;
-`;
+ORDER BY n.nspname, t.typname, e.enumsortorder`;
+
+  return [columnsQuery, pkQuery, fkQuery, indexQuery, enumQuery];
 }
 
 interface RawRow {
