@@ -247,77 +247,74 @@
 
       // Schema-aware autocomplete using Monaco editor API
       if (typeof monaco !== 'undefined') {
-        monaco.languages.registerCompletionItemProvider('sql', {
-          provideCompletionItems: function(model, position) {
-            if (!self._schemaCache) return { suggestions: [] };
-            var tables = self._schemaCache.tables || {};
-            var word = model.getWordUntilPosition(position);
-            var range = {
-              startLineNumber: position.lineNumber,
-              endLineNumber: position.lineNumber,
-              startColumn: word.startColumn,
-              endColumn: word.endColumn,
-            };
+        // Log the actual language ID of the editor
+        var mEditor = this.editor.editor || this.editor;
+        if (mEditor && mEditor.getModel) {
+          var model = mEditor.getModel();
+          var langId = model ? model.getLanguageId() : 'unknown';
+          console.log("[postgres-autocomplete] Monaco editor language:", langId);
+        }
 
-            // Get the text before the cursor up to the start of the line
-            var textBeforeCursor = model.getValueInRange({
-              startLineNumber: position.lineNumber,
-              startColumn: 1,
-              endLineNumber: position.lineNumber,
-              endColumn: position.column,
-            });
-            var suggestions = [];
+        // Register for both 'sql' and the raw ACE mode string Node-RED may use
+        var sqlLangIds = ['sql', 'ace/mode/sql', 'pgsql'];
+        for (var li = 0; li < sqlLangIds.length; li++) {
+          (function(langId) {
+            monaco.languages.registerCompletionItemProvider(langId, {
+              provideCompletionItems: function(model, position) {
+                if (!self._schemaCache) return { suggestions: [] };
+                var tables = self._schemaCache.tables || {};
 
-            // After FROM or JOIN → suggest tables
-            var fromMatch = textBeforeCursor.match(/FROM\s+("?[\w.]*"?)$/i);
-            var joinMatch = textBeforeCursor.match(/JOIN\s+("?[\w.]*"?)$/i);
-            if (fromMatch || joinMatch) {
-              var partial = (fromMatch || joinMatch)[1].replace(/"/g, '').toLowerCase();
-              for (var key in tables) {
-                if (tables.hasOwnProperty(key) && (!partial || key.toLowerCase().indexOf(partial) >= 0)) {
-                  suggestions.push({
-                    label: key,
-                    kind: monaco.languages.CompletionItemKind.Module,
-                    detail: 'Table',
-                    insertText: key,
-                    range: range,
-                  });
-                }
-              }
-            } else {
-              // After table. → suggest columns
-              var dotMatch = textBeforeCursor.match(/[\s(](\w+)\.(\w*)$/);
-              if (dotMatch) {
-                var alias = dotMatch[1];
-                var colPrefix = dotMatch[2].toLowerCase();
-                for (var key in tables) {
-                  if (tables.hasOwnProperty(key)) {
-                    var shortName = key.split('.').pop();
-                    if (shortName === alias || key === alias) {
-                      var cols = tables[key].columns || [];
-                      var pk = tables[key].primaryKey || [];
-                      for (var i = 0; i < cols.length; i++) {
-                        if (!colPrefix || cols[i].name.toLowerCase().indexOf(colPrefix) === 0) {
-                          var isPk = pk.indexOf(cols[i].name) >= 0;
-                          suggestions.push({
-                            label: cols[i].name,
-                            kind: monaco.languages.CompletionItemKind.Field,
-                            detail: cols[i].type + (isPk ? ' (PK)' : '') + (cols[i].nullable ? '' : ' NOT NULL'),
-                            insertText: cols[i].name,
-                            range: range,
-                          });
+                var textToCursor = model.getValueInRange({
+                  startLineNumber: 1, startColumn: 1,
+                  endLineNumber: position.lineNumber, endColumn: position.column,
+                });
+
+                var suggestions = [];
+                var fromMatch = textToCursor.match(/\bFROM\s+("?[\w.]*"?)$/i);
+                var joinMatch = textToCursor.match(/\bJOIN\s+("?[\w.]*"?)$/i);
+                if (fromMatch || joinMatch) {
+                  var partial = (fromMatch || joinMatch)[1].replace(/"/g, '').toLowerCase();
+                  for (var key in tables) {
+                    if (tables.hasOwnProperty(key) && (!partial || key.toLowerCase().indexOf(partial) >= 0)) {
+                      suggestions.push({
+                        label: key, kind: monaco.languages.CompletionItemKind.Class,
+                        insertText: key, detail: Object.keys(tables[key].columns || {}).length + ' cols',
+                      });
+                    }
+                  }
+                } else {
+                  var dotMatch = textToCursor.match(/[\s,(](\w+)\.(\w*)$/);
+                  if (dotMatch) {
+                    var alias = dotMatch[1];
+                    var colPrefix = dotMatch[2].toLowerCase();
+                    for (var key in tables) {
+                      if (tables.hasOwnProperty(key)) {
+                        var shortName = key.split('.').pop();
+                        if (shortName === alias || key === alias) {
+                          var cols = tables[key].columns || [];
+                          var pk = tables[key].primaryKey || [];
+                          for (var i = 0; i < cols.length; i++) {
+                            if (!colPrefix || cols[i].name.toLowerCase().indexOf(colPrefix) === 0) {
+                              var isPk = pk.indexOf(cols[i].name) >= 0;
+                              suggestions.push({
+                                label: cols[i].name, kind: monaco.languages.CompletionItemKind.Field,
+                                insertText: cols[i].name,
+                                detail: cols[i].type + (isPk ? ' PK' : '') + (cols[i].nullable ? '' : ' NOT NULL'),
+                              });
+                            }
+                          }
+                          break;
                         }
                       }
-                      break;
                     }
                   }
                 }
+                return { suggestions: suggestions };
               }
-            }
-            return { suggestions: suggestions };
-          }
-        });
-        console.log("[postgres-autocomplete] Monaco completer registered for SQL");
+            });
+          })(sqlLangIds[li]);
+        }
+        console.log("[postgres-autocomplete] Monaco completer registered for SQL variants");
       }
 
       // Initialize type mapping checkbox states from current config
