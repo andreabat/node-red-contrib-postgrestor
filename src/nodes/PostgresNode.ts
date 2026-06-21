@@ -27,7 +27,7 @@ export function PostgresNode(this: any, config: PostgresNodeConfig) {
     const isParamsObject = typeof msg.params === 'object' && msg.params !== null && !Array.isArray(msg.params);
     const resolvedParams = useNamedParams && isParamsObject
       ? bindNamedParams(query, msg.params)
-      : (msg.params || []);
+      : (Array.isArray(msg.params) ? msg.params : []);
 
     const transactionMode = config.transactionMode === true || config.transactionMode === 'true';
     const cursorMode = config.cursorMode === true || config.cursorMode === 'true';
