@@ -1,0 +1,96 @@
+<script type="text/x-red" data-template-name="PostgresIntrospectNode">
+  <div class="form-row">
+    <label for="node-input-name">
+      <i class="icon-tag"></i>
+      <span data-i18n="postgres.label.name"></span>
+    </label>
+    <input type="text" id="node-input-name" data-i18n="[placeholder]node-red:common.label.name">
+  </div>
+  <div class="form-row">
+    <label for="node-input-PostgresDBNode">
+      <i class="fa fa-server"></i>
+      <span data-i18n="postgres.label.server"></span>
+    </label>
+    <input type="text" id="node-input-PostgresDBNode">
+  </div>
+  <div class="form-row">
+    <label for="node-input-schema">
+      <span>Schema</span>
+    </label>
+    <input type="text" id="node-input-schema" placeholder="public">
+  </div>
+  <div class="form-row">
+    <label for="node-input-cacheTTL">
+      <span>Cache TTL (seconds)</span>
+    </label>
+    <input type="number" id="node-input-cacheTTL" placeholder="300" min="0">
+  </div>
+  <div class="form-row">
+    <input type="checkbox" id="node-input-includeSystemCatalogs" style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-input-includeSystemCatalogs">
+      <span>Include system catalogs (pg_catalog, information_schema)</span>
+    </label>
+  </div>
+</script>
+
+<script type="text/javascript">
+  RED.nodes.registerType("PostgresIntrospectNode", {
+    category: "storage",
+    color: 'rgb(5, 93, 193)',
+    defaults: {
+      name: { value: "" },
+      PostgresDBNode: { type: "PostgresDBNode", required: true },
+      schema: { value: "public" },
+      cacheTTL: { value: 300, validate: RED.validators.number() },
+      includeSystemCatalogs: { value: false },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "db.png",
+    align: "left",
+    label: function () {
+      return this.name || "schema introspect";
+    },
+    labelStyle: function () {
+      return this.name ? "node_label_italic" : "";
+    },
+    oneditprepare: function () {
+      $("#node-input-includeSystemCatalogs").prop("checked",
+        this.includeSystemCatalogs === true || this.includeSystemCatalogs === 'true');
+    },
+    oneditsave: function () {}
+  });
+</script>
+
+<script type="text/x-red" data-help-name="PostgresIntrospectNode">
+    <h3>PostgresIntrospectNode — Schema Introspection</h3>
+    <p>Queries <code>information_schema</code> and <code>pg_catalog</code> to build a
+    structured schema representation of your database. Caches the result on the
+    PostgresDBNode config for use by other nodes and the editor.</p>
+
+    <h4>Configuration</h4>
+    <dl>
+      <dt><b>Name</b></dt><dd>Label for this node in the flow.</dd>
+      <dt><b>Server</b></dt><dd>Select a PostgresDBNode that defines the database connection.</dd>
+      <dt><b>Schema</b></dt><dd>PostgreSQL schema to introspect. Default: <code>public</code>.</dd>
+      <dt><b>Cache TTL (seconds)</b></dt><dd>How long the schema stays cached before a refresh. Default: 300 (5 min). Set to 0 to always re-query.</dd>
+      <dt><b>Include system catalogs</b></dt><dd>When enabled, includes <code>pg_catalog</code> and <code>information_schema</code> tables. Off by default.</dd>
+    </dl>
+
+    <h4>Input</h4>
+    <p>Any message triggers introspection. Send <code>msg.refresh = true</code> to bypass the cache and force a re-query.</p>
+
+    <h4>Output</h4>
+    <ul>
+      <li><code>msg.payload</code> — <code>SchemaPayload</code> with tables, columns, FKs, indexes, enums</li>
+      <li><code>msg.schema</code> — schema name (e.g. "public")</li>
+      <li><code>msg.database</code> — database name</li>
+    </ul>
+
+    <h4>Status Badge</h4>
+    <ul>
+      <li><span style="color:green">●</span> <b>12 tables, 87 columns</b> — fresh introspection complete</li>
+      <li><span style="color:gold">●</span> <b>Serving from cache</b> — returning cached data</li>
+      <li><span style="color:red">●</span> <b>DB unreachable</b> — connection failed</li>
+    </ul>
+</script>
