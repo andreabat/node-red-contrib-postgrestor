@@ -16,10 +16,10 @@
 
   <!-- Query Editor — main element -->
   <div class="form-row" style="margin-bottom: 0;">
-    <label for="node-input-query" style="align-self: flex-start; padding-top: 4px;">
+    <label for="node-input-query" id="postgres-query-label" style="align-self: flex-start; padding-top: 4px;">
       <i class="fa fa-file-code-o"></i>
       <span>Query</span>
-      <div id="postgres-type-hints" style="font-size: 0.8em; color: #888; font-weight: normal; margin-top: 2px;"></div>
+      <i id="postgres-type-hint-icon" class="fa fa-info-circle" style="display: none; font-size: 0.8em; color: #aaa; margin-left: 4px; cursor: help;"></i>
     </label>
     <input type="hidden" id="node-input-query" autofocus="autofocus">
   </div>
@@ -27,11 +27,8 @@
     <div style="height: 300px; min-height: 150px;" class="node-text-editor" id="node-input-editor"></div>
   </div>
 
-  <!-- Toolbar: Query Gen + Magic Wand inline -->
+  <!-- Toolbar: Magic Wand -->
   <div class="form-row" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-    <button id="postgres-gen-query-btn" class="red-ui-button" title="Generate a query template from schema" style="flex-shrink: 0;">
-      <i class="fa fa-bolt"></i> Generate
-    </button>
     <input type="text" id="postgres-magic-prompt" placeholder="&#x1FA84; Describe what query you want..." style="flex: 1; min-width: 200px;">
     <button id="postgres-magic-generate" class="red-ui-button" style="flex-shrink: 0;">
       <i class="fa fa-magic"></i>
@@ -273,14 +270,15 @@
       var magicActions = $("#postgres-magic-actions");
       var magicError = $("#postgres-magic-error");
       var magicGenerate = $("#postgres-magic-generate");
-      var genQueryBtn = $("#postgres-gen-query-btn");
-      var typeHints = $("#postgres-type-hints");
+      var typeHintsIcon = $("#postgres-type-hint-icon");
+      var typeHintsLabel = $("#postgres-query-label");
 
       function updateTypeHints() {
-        if (!self._schemaCache) { typeHints.text(""); return; }
+        if (!self._schemaCache) { typeHintsIcon.hide(); typeHintsLabel.prop("title", ""); return; }
         var query = self.editor ? self.editor.getValue() : "";
         var tables = self._schemaCache.tables || {};
         var fromMatch = query.match(/FROM\s+"?(\w+\.?\w*)"?/i);
+        var hints = "";
         if (fromMatch && fromMatch[1]) {
           var tableKey = fromMatch[1];
           var table = tables[tableKey];
@@ -292,39 +290,39 @@
             }
           }
           if (table && table.columns) {
-            var hintText = "\u2192 columns: " + table.columns.map(function(c) {
+            hints = table.columns.map(function(c) {
               var parts = [c.name + "(" + c.type + ")"];
               if ((table.primaryKey || []).indexOf(c.name) >= 0) parts.push("PK");
               if (!c.nullable) parts.push("NOT NULL");
               return parts.join(" ");
-            }).join(", ");
-            typeHints.text(hintText);
-            return;
+            }).join("\n");
           }
         }
-        typeHints.text("");
+        if (hints) {
+          typeHintsIcon.show();
+          typeHintsLabel.prop("title", "Columns:\n" + hints);
+        } else {
+          typeHintsIcon.hide();
+          typeHintsLabel.prop("title", "");
+        }
       }
 
       function checkMagicState() {
         var configId = $("#node-input-PostgresDBNode").val();
         if (!configId) {
           magicGenerate.prop("disabled", true).attr("title", "Select a PostgresDBNode first");
-          genQueryBtn.prop("disabled", true).attr("title", "Select a PostgresDBNode first");
           return;
         }
         $.getJSON("postgres-introspect/schema/" + configId, function(data) {
           if (data.stale) {
             magicGenerate.prop("disabled", true).attr("title", "Schema not loaded");
-            genQueryBtn.prop("disabled", true).attr("title", "Schema not loaded");
           } else {
             self._schemaCache = data;
             magicGenerate.prop("disabled", false).removeAttr("title");
-            genQueryBtn.prop("disabled", false).removeAttr("title");
             updateTypeHints();
           }
         }).fail(function() {
           magicGenerate.prop("disabled", true).attr("title", "Cannot reach schema endpoint");
-          genQueryBtn.prop("disabled", true);
         });
       }
 
@@ -369,67 +367,6 @@
       $("#postgres-magic-retry").click(function() { magicGenerate.click(); });
       $("#postgres-magic-cancel").click(function() {
         magicResult.hide(); magicActions.hide(); magicError.hide();
-      });
-
-      genQueryBtn.click(function() {
-        if (!self._schemaCache) return;
-        var tables = self._schemaCache.tables || {};
-        var tableNames = Object.keys(tables);
-        if (tableNames.length === 0) return;
-        var tableName = prompt("Enter table name (e.g. public.users):", tableNames[0]);
-        if (!tableName) return;
-        var table = tables[tableName];
-        if (!table) { alert("Table not found in schema"); return; }
-        var action = prompt("Action: SELECT, INSERT, UPDATE, or DELETE?", "SELECT");
-        if (!action) return;
-        var cols = (table.columns || []).filter(function(c) { return !c.isGenerated && !c.isIdentity; });
-        var colNames = cols.map(function(c) { return c.name; });
-        var pk = table.primaryKey || [];
-        var query = "";
-        if (action.toUpperCase() === "SELECT") {
-          query = "SELECT " + colNames.join(", ") + "\nFROM " + tableName + "\nWHERE ";
-          if (pk.length > 0) {
-            for (var i = 0; i < pk.length; i++) {
-              query += pk[i] + " = $" + (i + 1);
-              if (i < pk.length - 1) query += " AND ";
-            }
-          } else { query += "true"; }
-        } else if (action.toUpperCase() === "INSERT") {
-          query = "INSERT INTO " + tableName + " (" + colNames.join(", ") + ")\nVALUES (";
-          for (var i = 0; i < colNames.length; i++) {
-            query += "$" + (i + 1);
-            if (i < colNames.length - 1) query += ", ";
-          }
-          query += ")\nRETURNING *";
-        } else if (action.toUpperCase() === "UPDATE") {
-          query = "UPDATE " + tableName + " SET ";
-          var setParts = [];
-          for (var i = 0; i < colNames.length; i++) {
-            setParts.push(colNames[i] + " = $" + (i + 1));
-          }
-          query += setParts.join(", ");
-          query += "\nWHERE ";
-          if (pk.length > 0) {
-            var pkOffset = colNames.length;
-            for (var i = 0; i < pk.length; i++) {
-              query += pk[i] + " = $" + (pkOffset + i + 1);
-              if (i < pk.length - 1) query += " AND ";
-            }
-          } else { query += "true"; }
-        } else if (action.toUpperCase() === "DELETE") {
-          query = "DELETE FROM " + tableName + "\nWHERE ";
-          if (pk.length > 0) {
-            for (var i = 0; i < pk.length; i++) {
-              query += pk[i] + " = $" + (i + 1);
-              if (i < pk.length - 1) query += " AND ";
-            }
-          } else { query += "true"; }
-        }
-        if (query && self.editor) {
-          self.editor.setValue(query);
-          self.editor.focus();
-          updateTypeHints();
-        }
       });
 
       self.editor.on("change", updateTypeHints);

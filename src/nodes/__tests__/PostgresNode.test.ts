@@ -59,6 +59,8 @@ jest.mock('pg-copy-streams', () => ({
   to: jest.fn().mockReturnValue({})
 }));
 
+import * as pgCopyStreams from 'pg-copy-streams';
+
 import type { PostgresNodeConfig } from '../../lib/types';
 
 import { PostgresNode } from '../PostgresNode';
@@ -799,114 +801,6 @@ describe('PostgresNode', () => {
     });
   });
 
-  describe('prepared statement auto-naming (REL-02)', () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
-      jest.useFakeTimers();
-      mockMustacheRender.mockReturnValue('SELECT * FROM users');
-      mockBindNamedParams.mockReturnValue([]);
-      mockFormatError.mockReturnValue({ message: 'mock error' });
-      mockBuildQueryTypes.mockReturnValue(undefined);
-    });
-
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
-    it('should pass hashQuery name starting with ps_ followed by 8 hex characters', async () => {
-      mockClient.query.mockResolvedValue({ command: 'SELECT', rowCount: 1, rows: [] });
-
-      const config = buildConfig();
-      const context = buildContext();
-      const boundFn = PostgresNode.bind(context, config);
-      boundFn();
-      nodeInstance = context;
-
-      await runInputAndWait({});
-
-      const queryCall = mockClient.query.mock.calls.find(
-        (call: any[]) => typeof call[0] === 'object' && call[0] !== null && call[0].name
-      );
-      expect(queryCall).toBeDefined();
-      expect(queryCall![0].name).toMatch(/^ps_[0-9a-f]{8}$/);
-    });
-
-    it('should produce the same hash for identical queries', async () => {
-      mockClient.query.mockResolvedValue({ command: 'SELECT', rowCount: 1, rows: [] });
-      mockMustacheRender.mockReturnValue('SELECT * FROM users WHERE id = 1');
-
-      // First call
-      const config = buildConfig();
-      const context1 = buildContext();
-      const boundFn1 = PostgresNode.bind(context1, config);
-      boundFn1();
-      nodeInstance = context1;
-      await runInputAndWait({});
-
-      // Second call with different node instance but same query
-      mockClient.query.mockClear();
-      const context2 = buildContext();
-      const boundFn2 = PostgresNode.bind(context2, config);
-      boundFn2();
-      nodeInstance = context2;
-      await runInputAndWait({});
-
-      const calls = mockClient.query.mock.calls
-        .filter((call: any[]) => typeof call[0] === 'object' && call[0] !== null && call[0].name);
-      expect(calls.length).toBe(1);
-      expect(calls[0]![0].name).toMatch(/^ps_[0-9a-f]{8}$/);
-    });
-
-    it('should produce different hashes for different queries', async () => {
-      mockClient.query.mockResolvedValue({ command: 'SELECT', rowCount: 1, rows: [] });
-
-      // First query
-      mockMustacheRender.mockReturnValue('SELECT * FROM users');
-      const config = buildConfig();
-      const context1 = buildContext();
-      const boundFn1 = PostgresNode.bind(context1, config);
-      boundFn1();
-      nodeInstance = context1;
-      await runInputAndWait({});
-
-      const name1 = mockClient.query.mock.calls.find(
-        (call: any[]) => typeof call[0] === 'object' && call[0] !== null && call[0].name
-      )![0].name;
-
-      // Second query — different text
-      mockClient.query.mockClear();
-      mockMustacheRender.mockReturnValue('SELECT * FROM products');
-      const context2 = buildContext();
-      const boundFn2 = PostgresNode.bind(context2, config);
-      boundFn2();
-      nodeInstance = context2;
-      await runInputAndWait({});
-
-      const name2 = mockClient.query.mock.calls.find(
-        (call: any[]) => typeof call[0] === 'object' && call[0] !== null && call[0].name
-      )![0].name;
-
-      expect(name1).not.toEqual(name2);
-    });
-
-    it('should pass prepared statement name even when namedParams is OFF (every query auto-prepares per D-04)', async () => {
-      mockClient.query.mockResolvedValue({ command: 'SELECT', rowCount: 1, rows: [] });
-
-      const config = buildConfig({ useNamedParams: false });
-      const context = buildContext();
-      const boundFn = PostgresNode.bind(context, config);
-      boundFn();
-      nodeInstance = context;
-
-      await runInputAndWait({});
-
-      const queryCall = mockClient.query.mock.calls.find(
-        (call: any[]) => typeof call[0] === 'object' && call[0] !== null && call[0].name
-      );
-      expect(queryCall).toBeDefined();
-      expect(queryCall![0].name).toMatch(/^ps_[0-9a-f]{8}$/);
-    });
-  });
 
   describe('type mapping integration (REL-03)', () => {
     beforeEach(() => {
@@ -976,7 +870,7 @@ describe('PostgresNode', () => {
       );
     });
 
-    it('should call client.query with name and text fields in config object', async () => {
+    it('should call client.query with text and values in config object', async () => {
       mockClient.query.mockResolvedValue({ command: 'SELECT', rowCount: 1, rows: [] });
 
       const config = buildConfig();
@@ -988,10 +882,9 @@ describe('PostgresNode', () => {
       await runInputAndWait({});
 
       const queryCall = mockClient.query.mock.calls.find(
-        (call: any[]) => typeof call[0] === 'object' && call[0] !== null
+        (call: any[]) => typeof call[0] === 'object' && call[0] !== null && call[0].text
       );
       expect(queryCall).toBeDefined();
-      expect(queryCall![0].name).toMatch(/^ps_[0-9a-f]{8}$/);
       expect(queryCall![0].text).toBe('SELECT 1');
       expect(queryCall![0].values).toEqual([]);
     });
@@ -1399,9 +1292,49 @@ describe('PostgresNode', () => {
 
       await runInputAndWait({ payload: 'csv,data\n' });
 
+      expect(pgCopyStreams.from).toHaveBeenCalled();
+      expect(pgCopyStreams.to).not.toHaveBeenCalled();
       expect(mockPipeline).toHaveBeenCalled();
       expect(context.status).toHaveBeenCalledWith(
         expect.objectContaining({ text: 'COPY import complete' })
+      );
+    });
+
+    it('should use copyTo for COPY TO STDOUT queries', async () => {
+      mockMustacheRender.mockReturnValue('COPY t TO STDOUT WITH (FORMAT csv)');
+
+      const config = buildConfig({ copyMode: true });
+      const context = buildContext();
+      PostgresNode.bind(context, config)();
+      nodeInstance = context;
+
+      await runInputAndWait({});
+
+      expect(pgCopyStreams.to).toHaveBeenCalled();
+      expect(pgCopyStreams.from).not.toHaveBeenCalled();
+      expect(context.status).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'COPY export complete' })
+      );
+    });
+
+    it('should route COPY (subquery) TO STDOUT to copyTo, not copyFrom', async () => {
+      // Regression test: the old includes('FROM') check falsely matched
+      // FROM inside subqueries, hitting the COPY FROM path and crashing.
+      mockMustacheRender.mockReturnValue(
+        "COPY (SELECT * FROM motors_data WHERE motor_id = 'M001') TO STDOUT WITH (FORMAT csv)"
+      );
+
+      const config = buildConfig({ copyMode: true });
+      const context = buildContext();
+      PostgresNode.bind(context, config)();
+      nodeInstance = context;
+
+      await runInputAndWait({});
+
+      expect(pgCopyStreams.to).toHaveBeenCalled();
+      expect(pgCopyStreams.from).not.toHaveBeenCalled();
+      expect(context.status).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'COPY export complete' })
       );
     });
 

@@ -1,5 +1,4 @@
 import mustache from 'mustache';
-import * as crypto from 'crypto';
 import { getREDNodes } from '../lib/red';
 import type { PostgresNodeConfig } from '../lib/types';
 import { bindNamedParams } from '../lib/params';
@@ -8,10 +7,6 @@ import { buildQueryTypes } from '../lib/typeMapping';
 import { from as copyFrom, to as copyTo } from 'pg-copy-streams';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
-
-function hashQuery(text: string): string {
-  return 'ps_' + crypto.createHash('md5').update(text).digest('hex').substring(0, 8);
-}
 
 export function PostgresNode(this: any, config: PostgresNodeConfig) {
   const RED = getREDNodes();
@@ -70,17 +65,30 @@ export function PostgresNode(this: any, config: PostgresNodeConfig) {
 
         // COPY path (no retry, D-10)
         if (copyMode && query.trim().toUpperCase().startsWith('COPY')) {
-          if (query.toUpperCase().includes('FROM')) {
-            const ingestStream = client.query(copyFrom(query));
+          // Detect COPY direction: FROM STDIN vs TO STDOUT.
+          // Use targeted regex rather than a loose includes('FROM') which
+          // falsely matches FROM inside COPY (subquery) TO STDOUT.
+          if (/\bFROM\s+STDIN\b/i.test(query)) {
+            // Defensive: CopyFromQueryStream lacks handleCopyData; if pg events
+            // leak through (e.g. a misrouted COPY TO query), this prevents a crash.
+            const fromStream = copyFrom(query);
+            (fromStream as unknown as Record<string, (...args: unknown[]) => void>).handleCopyData = () => {};
+            (fromStream as unknown as Record<string, (...args: unknown[]) => void>).handleCopyOutResponse = () => {};
+            const ingestStream = client.query(fromStream);
             const csvData = Readable.from([String(msg.payload || '')]);
             await pipeline(csvData, ingestStream);
             msg.payload = { message: 'COPY FROM complete' };
             node.status({ fill: 'green', shape: 'ring', text: 'COPY import complete' });
           } else {
             const chunks: Buffer[] = [];
-            const copyStream = client.query(copyTo(query));
-            await pipeline(copyStream, async function* (source: any) {
-              for await (const chunk of source) { chunks.push(Buffer.from(chunk)); }
+            // Defensive: CopyToQueryStream hijacks the pg parser via _attach(),
+            // but if CopyData events leak through, this prevents a crash.
+            const toStream = copyTo(query);
+            (toStream as unknown as Record<string, (...args: unknown[]) => void>).handleCopyData = () => {};
+            (toStream as unknown as Record<string, (...args: unknown[]) => void>).handleCopyOutResponse = () => {};
+            const copyStream = client.query(toStream);
+            await pipeline(copyStream, async function* (source: AsyncIterable<unknown>) {
+              for await (const chunk of source) { chunks.push(Buffer.from(chunk as Uint8Array)); }
             });
             msg.payload = Buffer.concat(chunks).toString('utf8');
             node.status({ fill: 'green', shape: 'ring', text: 'COPY export complete' });
@@ -142,7 +150,6 @@ export function PostgresNode(this: any, config: PostgresNodeConfig) {
               msg.payload = outputResult ? outputResult.rows : [];
               node.status({ fill: 'green', shape: 'ring', text: 'Transaction committed' });
             } else {
-              const stmtName = hashQuery(query);
               const disableAll = !(config.mapNumeric === true || config.mapNumeric === 'true') &&
                                  !(config.mapTimestamptz === true || config.mapTimestamptz === 'true') &&
                                  (config.parseJsonb === false || config.parseJsonb === 'false');
@@ -150,7 +157,6 @@ export function PostgresNode(this: any, config: PostgresNodeConfig) {
               const queryTypes = buildQueryTypes({ disableAll, disableJsonb });
 
               msg.payload = await client.query({
-                name: stmtName,
                 text: query,
                 values: resolvedParams,
                 types: queryTypes

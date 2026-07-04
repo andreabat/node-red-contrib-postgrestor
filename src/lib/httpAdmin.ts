@@ -4,6 +4,35 @@ import { buildIntrospectionQueries, assembleSchemaPayload } from './introspect';
 import { formatError } from './errorFormatter';
 import type { SchemaPayload } from './types';
 
+// ---- OpenRouter models cache ----
+interface ModelEntry {
+  id: string;
+  name: string;
+}
+
+let modelsCache: { models: ModelEntry[]; timestamp: number } | null = null;
+const MODELS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
+
+async function fetchOpenRouterModels(): Promise<ModelEntry[]> {
+  const now = Date.now();
+  if (modelsCache && (now - modelsCache.timestamp) < MODELS_CACHE_TTL) {
+    return modelsCache.models;
+  }
+  const resp = await globalThis.fetch('https://openrouter.ai/api/v1/models', {
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!resp.ok) {
+    throw new Error(`OpenRouter models endpoint returned ${resp.status}`);
+  }
+  const body: any = await resp.json();
+  const models: ModelEntry[] = (body.data || []).map((m: any) => ({
+    id: m.id,
+    name: m.name || m.id,
+  }));
+  modelsCache = { models, timestamp: now };
+  return models;
+}
+
 function buildSystemPrompt(schema: SchemaPayload, style: string): string {
   const tableList = Object.entries(schema.tables).map(([key, table]) => {
     const cols = table.columns.map(c => {
@@ -170,6 +199,16 @@ export function init(_RED?: any): void {
     } catch (err: any) {
       RED.log.error(`generate-query error: ${err.message}`);
       return res.status(500).json({ error: err.message || 'Internal error' });
+    }
+  });
+
+  RED.httpAdmin.get('/postgres-introspect/models', async (_req: any, res: any) => {
+    try {
+      const models = await fetchOpenRouterModels();
+      return res.json({ models });
+    } catch (err: any) {
+      RED.log.warn(`models endpoint error: ${err.message}`);
+      return res.status(502).json({ error: err.message || 'Failed to fetch models' });
     }
   });
 }

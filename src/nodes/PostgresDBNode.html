@@ -187,10 +187,7 @@
           <i class="fa fa-cube"></i>
           <span>AI Model</span>
         </label>
-        <select id="node-config-input-model" style="width: auto;">
-          <option value="openai/gpt-4o-mini">GPT-4o Mini (fast, cheap)</option>
-          <option value="openai/gpt-4o">GPT-4o (smarter)</option>
-        </select>
+        <input type="text" id="node-config-input-model" autocomplete="off" placeholder="Type to search models..." style="width: 80%;">
       </div>
       <div class="form-row">
         <label for="node-config-input-promptStyle">
@@ -441,6 +438,32 @@
           schemaStatus.html('<i class="fa fa-database"></i> Schema: not loaded');
         });
       }
+      // ---- Model autocomplete (OpenRouter) ----
+      var modelInput = $("#node-config-input-model");
+      $.getJSON("postgres-introspect/models", function(data) {
+        var allModels = data.models || [];
+        modelInput.autocomplete({
+          minLength: 1,
+          delay: 150,
+          source: function(req, resp) {
+            var term = req.term.toLowerCase();
+            var matches = allModels.filter(function(m) {
+              return m.id.toLowerCase().indexOf(term) !== -1 ||
+                     m.name.toLowerCase().indexOf(term) !== -1;
+            });
+            resp(matches.slice(0, 30).map(function(m) {
+              return { label: m.name + " (" + m.id + ")", value: m.id };
+            }));
+          },
+          select: function(ev, ui) {
+            modelInput.val(ui.item.value);
+            return false;
+          }
+        });
+      }).fail(function() {
+        console.warn("Failed to load OpenRouter models");
+      });
+
       $("#postgres-refresh-schema-btn").click(function() {
         schemaStatus.html('<i class="fa fa-spinner fa-spin"></i> Refreshing...');
         $.ajax({
